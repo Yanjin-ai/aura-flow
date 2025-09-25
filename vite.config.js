@@ -41,13 +41,7 @@ export default defineConfig({
     },
     // 构建优化
     target: 'es2015',
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: process.env.NODE_ENV === 'production',
-        drop_debugger: true
-      }
-    },
+    minify: 'esbuild',
     // 资源内联阈值
     assetsInlineLimit: 4096,
     // 生成 source map（生产环境可选）
