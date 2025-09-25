@@ -1,10 +1,20 @@
 import axios, { AxiosError } from "axios";
 
-// 调试：打印环境变量
-console.log('API Client - VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
+// 计算后端 API 基址：
+// - 若 VITE_API_BASE_URL 指向 supabase.co，判定为误配置并忽略
+// - 生产环境默认使用相对路径 '/'，避免跨域
+// - 开发环境回退到本地端口
+let configuredBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
+if (configuredBase && /supabase\.co/.test(configuredBase)) {
+  configuredBase = undefined; // 忽略误把 Supabase URL 当作后端 API 的情况
+}
+const apiBaseUrl = configuredBase || (import.meta.env.DEV ? 'http://localhost:3001' : '/');
+
+// 调试输出：便于排查部署配置
+console.log('API Client - resolved apiBaseUrl:', apiBaseUrl);
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5173',
+  baseURL: apiBaseUrl,
   withCredentials: true
 });
 
