@@ -11,9 +11,9 @@ if (!appId && import.meta.env.PROD) {
   );
 }
 
-// 开发模式：创建模拟客户端，避免真实 API 调用
+// 开发模式和生产环境都使用模拟客户端，避免真实 API 调用
 let base44;
-if (import.meta.env.DEV) {
+if (import.meta.env.DEV || import.meta.env.VITE_AI_PROVIDER === 'mock') {
   // 开发模式：创建模拟客户端
   base44 = {
     entities: {
@@ -47,7 +47,16 @@ if (import.meta.env.DEV) {
         ai_weekly_insights: true,
         ai_url_extraction: true
       }),
-      updateMyUserData: async () => ({ id: 'mock-user-id' })
+      updateMyUserData: async () => ({ id: 'mock-user-id' }),
+      login: async () => ({ 
+        user: { id: 'mock-user-id' },
+        token: 'mock-jwt-token'
+      }),
+      register: async () => ({ 
+        user: { id: 'mock-user-id' },
+        token: 'mock-jwt-token'
+      }),
+      logout: async () => ({})
     },
     integrations: {
       Core: {
