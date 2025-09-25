@@ -63,7 +63,8 @@ export function createAuthService(): AuthService {
   const config = getPlatformConfig();
   
   // 根据配置选择实现方式
-  if (config.environment === 'development' && config.ai_provider === 'mock') {
+  // 只要选择了 mock 提供商，则无论环境直接使用 MockAuthService，避免误连真实后端
+  if (config.ai_provider === 'mock') {
     return new MockAuthService();
   }
   
