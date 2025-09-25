@@ -45,6 +45,12 @@ export function getPlatformConfig(): PlatformConfig {
     environment: (import.meta.env.MODE as PlatformConfig['environment']) || 'development'
   };
   
+  // 在 Vercel 部署环境中强制使用 mock 模式
+  if (import.meta.env.MODE === 'production' && !import.meta.env.VITE_API_BASE_URL) {
+    config.environment = 'development';
+    config.ai_provider = 'mock';
+  }
+  
   return config;
 }
 
