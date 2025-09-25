@@ -24,7 +24,7 @@ import {
   Clock,
   Zap,
   HardDrive,
-  Clock
+  
 } from 'lucide-react';
 
 const MonitoringDashboard = () => {
