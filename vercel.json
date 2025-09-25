@@ -1,6 +1,7 @@
 {
   "version": 2,
   "name": "aura-flow",
+  "installCommand": "pnpm install --no-frozen-lockfile",
   "builds": [
     {
       "src": "package.json",
