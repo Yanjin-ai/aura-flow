@@ -142,15 +142,15 @@ export function createDatabaseService(): DatabaseService {
  * Mock 数据库服务（开发环境使用）
  */
 class MockDatabaseService implements DatabaseService {
-  private tasks: Task[] = [];
-  private insights: Insight[] = [];
-  private reflections: Reflection[] = [];
+  private tasksData: Task[] = [];
+  private insightsData: Insight[] = [];
+  private reflectionsData: Reflection[] = [];
   private feedback: InsightFeedback[] = [];
   
   tasks = {
     filter: async (filters = {}) => {
       await new Promise(resolve => setTimeout(resolve, 100));
-      return this.tasks.filter(task => {
+      return this.tasksData.filter(task => {
         if (filters.status && task.status !== filters.status) return false;
         if (filters.priority && task.priority !== filters.priority) return false;
         if (filters.user_id && task.user_id !== filters.user_id) return false;
@@ -173,42 +173,42 @@ class MockDatabaseService implements DatabaseService {
         tags: data.tags,
         metadata: data.metadata
       };
-      this.tasks.push(task);
+      this.tasksData.push(task);
       return task;
     },
     
     update: async (id: string, data: UpdateTaskData) => {
       await new Promise(resolve => setTimeout(resolve, 150));
-      const index = this.tasks.findIndex(task => task.id === id);
+      const index = this.tasksData.findIndex(task => task.id === id);
       if (index === -1) throw new Error('任务不存在');
       
-      this.tasks[index] = {
-        ...this.tasks[index],
+      this.tasksData[index] = {
+        ...this.tasksData[index],
         ...data,
         updated_at: new Date().toISOString()
       };
-      return this.tasks[index];
+      return this.tasksData[index];
     },
     
     delete: async (id: string) => {
       await new Promise(resolve => setTimeout(resolve, 100));
-      const index = this.tasks.findIndex(task => task.id === id);
+      const index = this.tasksData.findIndex(task => task.id === id);
       if (index === -1) return false;
       
-      this.tasks.splice(index, 1);
+      this.tasksData.splice(index, 1);
       return true;
     },
     
     getById: async (id: string) => {
       await new Promise(resolve => setTimeout(resolve, 100));
-      return this.tasks.find(task => task.id === id) || null;
+      return this.tasksData.find(task => task.id === id) || null;
     }
   };
   
   insights = {
     filter: async (filters = {}) => {
       await new Promise(resolve => setTimeout(resolve, 100));
-      return this.insights.filter(insight => {
+      return this.insightsData.filter(insight => {
         if (filters.type && insight.type !== filters.type) return false;
         if (filters.user_id && insight.user_id !== filters.user_id) return false;
         return true;
@@ -227,20 +227,20 @@ class MockDatabaseService implements DatabaseService {
         user_id: 'mock-user-id',
         metadata: data.metadata
       };
-      this.insights.push(insight);
+      this.insightsData.push(insight);
       return insight;
     },
     
     getById: async (id: string) => {
       await new Promise(resolve => setTimeout(resolve, 100));
-      return this.insights.find(insight => insight.id === id) || null;
+      return this.insightsData.find(insight => insight.id === id) || null;
     }
   };
   
   reflections = {
     filter: async (filters = {}) => {
       await new Promise(resolve => setTimeout(resolve, 100));
-      return this.reflections.filter(reflection => {
+      return this.reflectionsData.filter(reflection => {
         if (filters.user_id && reflection.user_id !== filters.user_id) return false;
         return true;
       });
@@ -257,13 +257,13 @@ class MockDatabaseService implements DatabaseService {
         user_id: 'mock-user-id',
         metadata: data.metadata
       };
-      this.reflections.push(reflection);
+      this.reflectionsData.push(reflection);
       return reflection;
     },
     
     getById: async (id: string) => {
       await new Promise(resolve => setTimeout(resolve, 100));
-      return this.reflections.find(reflection => reflection.id === id) || null;
+      return this.reflectionsData.find(reflection => reflection.id === id) || null;
     }
   };
   
