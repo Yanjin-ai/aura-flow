@@ -34,12 +34,12 @@ export default function DateNavigator({ currentDate, onDateChange }) {
   };
 
   return (
-    <div className="flex items-center justify-between mb-8">
-      <motion.h1
+    <div className="flex items-center justify-between mb-6">
+      <motion.h2
         key={currentDate.toISOString()}
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
-        className="text-3xl font-bold text-slate-800"
+        className="text-2xl font-semibold text-slate-700"
       >
         {isToday(currentDate) ? (
           <span className="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
@@ -48,7 +48,7 @@ export default function DateNavigator({ currentDate, onDateChange }) {
         ) : (
           getDateFormat()
         )}
-      </motion.h1>
+      </motion.h2>
 
       <div className="flex items-center gap-2">
         <Button

@@ -95,51 +95,37 @@ function PagesContent() {
                     {/* 具体页面路由 - 需要登录才能访问 */}
                     <Route path="/Home" element={
                       <ProtectedRoute>
-                        <Layout currentPageName="Home">
-                          <Home />
-                        </Layout>
+                        <Home />
                       </ProtectedRoute>
                     } />
                     <Route path="/DayView" element={
                       <ProtectedRoute>
-                        <Layout currentPageName="DayView">
-                          <DayView />
-                        </Layout>
+                        <DayView />
                       </ProtectedRoute>
                     } />
                     <Route path="/Insights" element={
                       <ProtectedRoute>
-                        <Layout currentPageName="Insights">
-                          <Insights />
-                        </Layout>
+                        <Insights />
                       </ProtectedRoute>
                     } />
                     <Route path="/Analytics" element={
                       <ProtectedRoute>
-                        <Layout currentPageName="Analytics">
-                          <Analytics />
-                        </Layout>
+                        <Analytics />
                       </ProtectedRoute>
                     } />
                     <Route path="/Settings" element={
                       <ProtectedRoute>
-                        <Layout currentPageName="Settings">
-                          <Settings />
-                        </Layout>
+                        <Settings />
                       </ProtectedRoute>
                     } />
                     <Route path="/ReflectionHistory" element={
                       <ProtectedRoute>
-                        <Layout currentPageName="ReflectionHistory">
-                          <ReflectionHistory />
-                        </Layout>
+                        <ReflectionHistory />
                       </ProtectedRoute>
                     } />
                     <Route path="/FeatureX" element={
                       <ProtectedRoute>
-                        <Layout currentPageName="FeatureX">
-                          <FeatureXList />
-                        </Layout>
+                        <FeatureXList />
                       </ProtectedRoute>
                     } />
                     <Route path="/admin" element={
