@@ -1,0 +1,140 @@
+# Aura Flow TLS 生产环境 Docker Compose 配置
+# 包含 Nginx + Certbot 协同获取证书
+
+version: '3.8'
+
+services:
+  # PostgreSQL 数据库
+  db:
+    image: postgres:15-alpine
+    container_name: aura-flow-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aura_flow}
+      POSTGRES_USER: ${POSTGRES_USER:-aura_flow_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - aura-flow-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aura_flow_user} -d ${POSTGRES_DB:-aura_flow}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # 后端 API 服务
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: aura-flow-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aura_flow_user}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-aura_flow}
+      JWT_SECRET: ${JWT_SECRET}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
+      CORS_ORIGIN: https://${DOMAIN:-yourdomain.com}
+      SENTRY_DSN: ${SENTRY_DSN}
+      AI_PROVIDER: ${AI_PROVIDER:-openai}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-120}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      TRUST_PROXY: "true"
+      SECURE_COOKIES: "true"
+      SAME_SITE_COOKIES: "strict"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - aura-flow-network
+    volumes:
+      - ./server/logs:/app/logs
+      - ./server/uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx 反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: aura-flow-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./dist:/usr/share/nginx/html:ro
+      - nginx_logs:/var/log/nginx
+      - certbot_www:/var/www/certbot
+      - certbot_conf:/etc/letsencrypt
+    depends_on:
+      - api
+    networks:
+      - aura-flow-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Certbot 证书管理
+  certbot:
+    image: certbot/certbot
+    container_name: aura-flow-certbot
+    restart: "no"
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_conf:/etc/letsencrypt
+    command: certonly --webroot -w /var/www/certbot --email ${EMAIL:-admin@yourdomain.com} --agree-tos --no-eff-email -d ${DOMAIN:-yourdomain.com} -d www.${DOMAIN:-yourdomain.com} -d api.${DOMAIN:-yourdomain.com}
+    depends_on:
+      - nginx
+    networks:
+      - aura-flow-network
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: aura-flow-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - aura-flow-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  nginx_logs:
+    driver: local
+  certbot_www:
+    driver: local
+  certbot_conf:
+    driver: local
+
+networks:
+  aura-flow-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

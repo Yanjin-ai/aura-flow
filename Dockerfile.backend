@@ -1,0 +1,44 @@
+# Aura Flow 后端 Dockerfile
+FROM node:18-alpine AS base
+
+# 安装系统依赖
+RUN apk add --no-cache \
+    curl \
+    postgresql-client \
+    && rm -rf /var/cache/apk/*
+
+# 设置工作目录
+WORKDIR /app
+
+# 复制 package.json 和 pnpm-lock.yaml
+COPY server/package*.json ./
+COPY server/pnpm-lock.yaml ./
+
+# 安装 pnpm
+RUN npm install -g pnpm
+
+# 安装依赖
+RUN pnpm install --frozen-lockfile --prod
+
+# 复制源代码
+COPY server/ ./
+
+# 生成 Prisma 客户端
+RUN pnpm db:generate
+
+# 创建必要的目录
+RUN mkdir -p logs uploads
+
+# 设置权限
+RUN chown -R node:node /app
+USER node
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:3001/health || exit 1
+
+# 暴露端口
+EXPOSE 3001
+
+# 启动命令
+CMD ["pnpm", "start"]

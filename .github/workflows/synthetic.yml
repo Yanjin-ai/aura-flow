@@ -1,0 +1,205 @@
+name: Synthetic Monitoring
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # 每 10 分钟运行一次
+  workflow_dispatch:  # 允许手动触发
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  synthetic-monitoring:
+    name: Synthetic Monitoring
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+        
+    - name: Install dependencies
+      run: |
+        pnpm install --frozen-lockfile
+        cd server && pnpm install --frozen-lockfile
+        
+    - name: Start services
+      run: |
+        # 启动后端服务
+        cd server
+        pnpm prisma generate
+        pnpm prisma db push
+        pnpm start &
+        BACKEND_PID=$!
+        echo "BACKEND_PID=$BACKEND_PID" >> $GITHUB_ENV
+        
+        # 等待后端启动
+        sleep 30
+        
+        # 启动前端服务
+        pnpm dev &
+        FRONTEND_PID=$!
+        echo "FRONTEND_PID=$FRONTEND_PID" >> $GITHUB_ENV
+        
+        # 等待前端启动
+        sleep 30
+        
+    - name: Run synthetic monitoring tests
+      run: |
+        chmod +x scripts/synthetic.sh
+        ./scripts/synthetic.sh
+      env:
+        API_BASE_URL: http://localhost:3001
+        FRONTEND_URL: http://localhost:5173
+        OUTPUT_DIR: ./test-results
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: synthetic-test-results-$(date +%Y%m%d-%H%M%S)
+        path: |
+          test-results/
+        retention-days: 7
+        
+    - name: Send alert on failure
+      if: failure()
+      run: |
+        chmod +x scripts/alert-webhook.sh
+        ./scripts/alert-webhook.sh system-alert "synthetic-monitoring" "critical" "合成监控测试失败" "关键用户旅程测试失败，请立即检查系统状态"
+        
+    - name: Cleanup services
+      if: always()
+      run: |
+        # 停止前端服务
+        if [ -n "$FRONTEND_PID" ]; then
+          kill $FRONTEND_PID 2>/dev/null || true
+        fi
+        
+        # 停止后端服务
+        if [ -n "$BACKEND_PID" ]; then
+          kill $BACKEND_PID 2>/dev/null || true
+        fi
+
+  # 针对 staging 环境的合成监控
+  staging-synthetic-monitoring:
+    name: Staging Synthetic Monitoring
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run synthetic monitoring tests against staging
+      run: |
+        chmod +x scripts/synthetic.sh
+        ./scripts/synthetic.sh
+      env:
+        API_BASE_URL: https://api-staging.yourdomain.com
+        FRONTEND_URL: https://staging.yourdomain.com
+        OUTPUT_DIR: ./staging-test-results
+        
+    - name: Upload staging test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: staging-synthetic-test-results-$(date +%Y%m%d-%H%M%S)
+        path: |
+          staging-test-results/
+        retention-days: 7
+        
+    - name: Send alert on staging failure
+      if: failure()
+      run: |
+        chmod +x scripts/alert-webhook.sh
+        ./scripts/alert-webhook.sh system-alert "staging-synthetic-monitoring" "warning" "Staging 合成监控测试失败" "Staging 环境关键用户旅程测试失败"
+
+  # 性能基准测试
+  performance-baseline:
+    name: Performance Baseline
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+        
+    - name: Install dependencies
+      run: |
+        pnpm install --frozen-lockfile
+        cd server && pnpm install --frozen-lockfile
+        
+    - name: Start services
+      run: |
+        # 启动后端服务
+        cd server
+        pnpm prisma generate
+        pnpm prisma db push
+        pnpm start &
+        BACKEND_PID=$!
+        echo "BACKEND_PID=$BACKEND_PID" >> $GITHUB_ENV
+        
+        # 等待后端启动
+        sleep 30
+        
+    - name: Run performance baseline tests
+      run: |
+        chmod +x scripts/synthetic.sh
+        # 运行多次测试以建立性能基线
+        for i in {1..5}; do
+          echo "运行第 $i 次性能测试..."
+          ./scripts/synthetic.sh
+          sleep 10
+        done
+        
+    - name: Generate performance baseline report
+      run: |
+        echo "# 性能基线报告" > performance-baseline.md
+        echo "生成时间: $(date)" >> performance-baseline.md
+        echo "" >> performance-baseline.md
+        echo "## 测试环境" >> performance-baseline.md
+        echo "- 运行环境: GitHub Actions" >> performance-baseline.md
+        echo "- 测试次数: 5" >> performance-baseline.md
+        echo "- 测试间隔: 10 秒" >> performance-baseline.md
+        echo "" >> performance-baseline.md
+        echo "## 性能指标" >> performance-baseline.md
+        echo "详细性能数据请查看上传的测试结果文件。" >> performance-baseline.md
+        
+    - name: Upload performance baseline
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: performance-baseline-$(date +%Y%m%d-%H%M%S)
+        path: |
+          test-results/
+          performance-baseline.md
+        retention-days: 30
+        
+    - name: Cleanup services
+      if: always()
+      run: |
+        if [ -n "$BACKEND_PID" ]; then
+          kill $BACKEND_PID 2>/dev/null || true
+        fi

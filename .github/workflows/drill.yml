@@ -1,0 +1,74 @@
+name: Monthly Disaster Recovery Drill
+
+on:
+  schedule:
+    # 每月第一个周日 UTC 时间 03:00 执行演练
+    - cron: '0 3 1-7 * 0'
+  workflow_dispatch: # 允许手动触发
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  drill:
+    name: Disaster Recovery Drill
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        
+    - name: Install PostgreSQL client
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client
+        
+    - name: Install dependencies
+      run: |
+        cd server
+        pnpm install --frozen-lockfile
+        
+    - name: Generate Prisma client
+      run: |
+        cd server
+        pnpm prisma generate
+        
+    - name: Create backup directory
+      run: mkdir -p server/backups
+      
+    - name: Run disaster recovery drill
+      run: |
+        cd server
+        chmod +x scripts/drill.sh
+        chmod +x scripts/verify.js
+        ./scripts/drill.sh
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        DB_HOST: ${{ secrets.DB_HOST || 'localhost' }}
+        DB_PORT: ${{ secrets.DB_PORT || '5432' }}
+        DB_USER: ${{ secrets.DB_USER || 'aura_flow_user' }}
+        
+    - name: Upload drill artifacts
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: drill-report-$(date +%Y%m%d)
+        path: |
+          server/backups/drill_*.log
+          server/backups/drill_report_*.txt
+        retention-days: 30
+        
+    - name: Notify drill completion
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ 灾难恢复演练成功完成"
+        else
+          echo "❌ 灾难恢复演练失败"
+        fi

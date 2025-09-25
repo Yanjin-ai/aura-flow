@@ -1,0 +1,313 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+  PNPM_VERSION: '8'
+
+jobs:
+  # 部署前检查
+  pre-deploy-check:
+    name: Pre-deploy Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: ${{ env.PNPM_VERSION }}
+        
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+      
+    - name: Run security audit
+      run: pnpm audit --audit-level moderate
+      
+    - name: Run k6 performance tests
+      run: |
+        # 安装 k6
+        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+        echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+        sudo apt-get update
+        sudo apt-get install k6
+        
+        # 运行性能测试
+        k6 run perf/k6/smoke.js --out json=perf-results.json
+        
+        # 检查性能阈值
+        if ! k6 run perf/k6/smoke.js --threshold http_req_failed=0.01 --threshold http_req_duration=300 --threshold checks=0.99; then
+          echo "❌ 性能测试未达到阈值要求"
+          exit 1
+        fi
+        echo "✅ 性能测试通过阈值检查"
+      
+    - name: Check for TODO comments
+      run: |
+        if grep -r "TODO\|FIXME\|HACK" src/ --exclude-dir=node_modules; then
+          echo "发现未完成的 TODO/FIXME/HACK 注释"
+          exit 1
+        fi
+        
+    - name: Validate environment files
+      run: |
+        # 检查环境变量文件是否存在
+        if [ ! -f ".env.example" ]; then
+          echo "缺少 .env.example 文件"
+          exit 1
+        fi
+        if [ ! -f "server/.env.example" ]; then
+          echo "缺少 server/.env.example 文件"
+          exit 1
+        fi
+
+  # 构建应用
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: pre-deploy-check
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: ${{ env.PNPM_VERSION }}
+        
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+      
+    - name: Install backend dependencies
+      run: |
+        cd server
+        pnpm install --frozen-lockfile
+        
+    - name: Build frontend
+      run: pnpm build
+      env:
+        VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+        VITE_AI_PROVIDER: ${{ secrets.VITE_AI_PROVIDER }}
+        VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+        VITE_ENABLE_TELEMETRY: true
+        VITE_BUILD_VERSION: ${{ github.sha }}
+        
+    - name: Build backend Docker image
+      run: |
+        docker build -f Dockerfile.backend -t aura-flow-backend:${{ github.sha }} .
+        
+    - name: Build frontend Docker image
+      run: |
+        docker build -t aura-flow-frontend:${{ github.sha }} .
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifacts
+        path: |
+          dist/
+          server/
+        retention-days: 30
+
+  # 运行 E2E 测试（作为部署门禁）
+  e2e-gate:
+    name: E2E Gate
+    runs-on: ubuntu-latest
+    needs: build
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: aura_flow_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build-artifacts
+        path: ./
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: ${{ env.PNPM_VERSION }}
+        
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+      
+    - name: Install backend dependencies
+      run: |
+        cd server
+        pnpm install --frozen-lockfile
+        
+    - name: Setup test database
+      run: |
+        cd server
+        pnpm db:generate
+        pnpm db:push
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/aura_flow_test
+        JWT_SECRET: test-secret-key
+        NODE_ENV: test
+        
+    - name: Start backend server
+      run: |
+        cd server
+        pnpm start &
+        sleep 10
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/aura_flow_test
+        JWT_SECRET: test-secret-key
+        NODE_ENV: test
+        PORT: 3001
+        
+    - name: Install Playwright browsers
+      run: pnpm playwright install --with-deps
+      
+    - name: Run critical E2E tests
+      run: pnpm playwright test --grep "auth|tasks|insights"
+      env:
+        VITE_API_BASE_URL: http://localhost:3001
+        VITE_AI_PROVIDER: mock
+        VITE_ENABLE_TELEMETRY: false
+        
+    - name: Run smoke tests
+      run: |
+        chmod +x scripts/smoke.sh
+        ./scripts/smoke.sh
+      env:
+        API_BASE_URL: http://localhost:3001
+
+  # 部署到生产环境
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [pre-deploy-check, build, e2e-gate, codeql, trivy, gitleaks]
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build-artifacts
+        path: ./
+        
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Login to Docker Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ secrets.DOCKER_REGISTRY }}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        
+    - name: Build and push Docker images
+      run: |
+        # 构建并推送后端镜像
+        docker buildx build \
+          --platform linux/amd64 \
+          --file Dockerfile.backend \
+          --tag ${{ secrets.DOCKER_REGISTRY }}/aura-flow-backend:${{ github.sha }} \
+          --tag ${{ secrets.DOCKER_REGISTRY }}/aura-flow-backend:latest \
+          --push .
+          
+        # 构建并推送前端镜像
+        docker buildx build \
+          --platform linux/amd64 \
+          --tag ${{ secrets.DOCKER_REGISTRY }}/aura-flow-frontend:${{ github.sha }} \
+          --tag ${{ secrets.DOCKER_REGISTRY }}/aura-flow-frontend:latest \
+          --push .
+          
+    - name: Deploy to production server
+      run: |
+        # 这里添加实际的部署逻辑
+        # 例如：使用 SSH 连接到服务器，更新 Docker Compose 等
+        echo "部署到生产环境..."
+        echo "镜像标签: ${{ github.sha }}"
+        
+    - name: Run post-deployment tests
+      run: |
+        # 部署后测试
+        sleep 30  # 等待服务启动
+        curl -f ${{ secrets.PRODUCTION_URL }}/health || exit 1
+        
+    - name: Notify deployment success
+      if: success()
+      run: |
+        echo "✅ 生产环境部署成功"
+        # 可以添加通知逻辑，如发送 Slack 消息、邮件等
+        
+    - name: Notify deployment failure
+      if: failure()
+      run: |
+        echo "❌ 生产环境部署失败"
+        # 可以添加失败通知逻辑
+
+  # 回滚任务（手动触发）
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Rollback to previous version
+      run: |
+        # 这里添加回滚逻辑
+        # 例如：使用之前的镜像标签重新部署
+        echo "回滚到上一个版本..."
+        
+    - name: Verify rollback
+      run: |
+        # 验证回滚是否成功
+        sleep 30
+        curl -f ${{ secrets.PRODUCTION_URL }}/health || exit 1
+        
+    - name: Notify rollback completion
+      run: |
+        echo "✅ 回滚完成"
+        # 可以添加通知逻辑

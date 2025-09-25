@@ -1,0 +1,277 @@
+name: Gitleaks Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 2 * * *'  # 每天 UTC 2:00 运行
+
+env:
+  GITLEAKS_VERSION: "8.18.0"
+
+jobs:
+  gitleaks:
+    name: Gitleaks Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install Gitleaks
+      run: |
+        curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v${{ env.GITLEAKS_VERSION }}/gitleaks_${{ env.GITLEAKS_VERSION }}_linux_x64.tar.gz | tar -xz
+        chmod +x gitleaks
+        sudo mv gitleaks /usr/local/bin/
+
+    - name: Create Gitleaks configuration
+      run: |
+        cat > .gitleaks.toml << EOF
+        title = "Aura Flow Gitleaks Configuration"
+        version = "8.18.0"
+        enable-git = true
+        verbose = true
+        redact = true
+        exit-code = 1
+        severity = "error"
+        
+        [allowlist]
+        description = "Allowlist for known false positives"
+        commits = [
+          "commit-hash-1",
+          "commit-hash-2"
+        ]
+        
+        [allowlist.regexes]
+        description = "Allowlist regex patterns"
+        regexes = [
+          "test.*password.*=.*test",
+          "example.*key.*=.*example",
+          "mock.*secret.*=.*mock"
+        ]
+        
+        [allowlist.paths]
+        description = "Allowlist file paths"
+        paths = [
+          "test/",
+          "tests/",
+          "spec/",
+          "specs/",
+          "*.test.js",
+          "*.test.ts",
+          "*.spec.js",
+          "*.spec.ts",
+          "package-lock.json",
+          "pnpm-lock.yaml",
+          "yarn.lock"
+        ]
+        
+        [rules]
+        description = "Custom rules for Aura Flow"
+        
+        [[rules]]
+        id = "aura-flow-api-key"
+        description = "Aura Flow API Key"
+        regex = '''(?i)(aura[_-]?flow[_-]?api[_-]?key|auraflow[_-]?api[_-]?key)['\"]?\s*[:=]\s*['\"]?[a-zA-Z0-9]{32,}['\"]?'''
+        severity = "error"
+        
+        [[rules]]
+        id = "jwt-secret"
+        description = "JWT Secret"
+        regex = '''(?i)(jwt[_-]?secret|jwtsecret)['\"]?\s*[:=]\s*['\"]?[a-zA-Z0-9]{32,}['\"]?'''
+        severity = "error"
+        
+        [[rules]]
+        id = "database-url"
+        description = "Database URL with credentials"
+        regex = '''(?i)(database[_-]?url|db[_-]?url)['\"]?\s*[:=]\s*['\"]?[a-zA-Z]+://[^:]+:[^@]+@[^/]+/[^'\"]*['\"]?'''
+        severity = "error"
+        
+        [[rules]]
+        id = "openai-api-key"
+        description = "OpenAI API Key"
+        regex = '''(?i)(openai[_-]?api[_-]?key|openai[_-]?key)['\"]?\s*[:=]\s*['\"]?sk-[a-zA-Z0-9]{48}['\"]?'''
+        severity = "error"
+        
+        [[rules]]
+        id = "sentry-dsn"
+        description = "Sentry DSN"
+        regex = '''(?i)(sentry[_-]?dsn|sentry[_-]?url)['\"]?\s*[:=]\s*['\"]?https://[a-f0-9]{32}@[^/]+/[0-9]+['\"]?'''
+        severity = "error"
+        
+        [[rules]]
+        id = "github-token"
+        description = "GitHub Token"
+        regex = '''(?i)(github[_-]?token|gh[_-]?token)['\"]?\s*[:=]\s*['\"]?(ghp|gho|ghu|ghs|ghr)_[a-zA-Z0-9]{36}['\"]?'''
+        severity = "error"
+        
+        [[rules]]
+        id = "aws-access-key"
+        description = "AWS Access Key"
+        regex = '''(?i)(aws[_-]?access[_-]?key[_-]?id|aws[_-]?access[_-]?key)['\"]?\s*[:=]\s*['\"]?AKIA[0-9A-Z]{16}['\"]?'''
+        severity = "error"
+        
+        [[rules]]
+        id = "aws-secret-key"
+        description = "AWS Secret Key"
+        regex = '''(?i)(aws[_-]?secret[_-]?access[_-]?key|aws[_-]?secret[_-]?key)['\"]?\s*[:=]\s*['\"]?[a-zA-Z0-9/+=]{40}['\"]?'''
+        severity = "error"
+        
+        [[rules]]
+        id = "slack-webhook"
+        description = "Slack Webhook URL"
+        regex = '''(?i)(slack[_-]?webhook[_-]?url|slack[_-]?webhook)['\"]?\s*[:=]\s*['\"]?https://hooks\.slack\.com/services/[a-zA-Z0-9/+=]+['\"]?'''
+        severity = "error"
+        
+        [[rules]]
+        id = "email-password"
+        description = "Email Password"
+        regex = '''(?i)(email[_-]?password|smtp[_-]?password)['\"]?\s*[:=]\s*['\"]?[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]{8,}['\"]?'''
+        severity = "error"
+        
+        EOF
+
+    - name: Run Gitleaks
+      run: |
+        gitleaks detect \
+          --source . \
+          --config .gitleaks.toml \
+          --verbose \
+          --redact \
+          --report-format json \
+          --report-path gitleaks-report.json \
+          --exit-code 1 || {
+            echo "❌ Gitleaks detected potential secrets"
+            exit 1
+          }
+
+    - name: Upload Gitleaks report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: gitleaks-report-${{ github.run_id }}
+        path: gitleaks-report.json
+        retention-days: 30
+
+    - name: Comment PR with Gitleaks results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          try {
+            const report = JSON.parse(fs.readFileSync('gitleaks-report.json', 'utf8'));
+            if (report.length > 0) {
+              const comment = `## 🔒 Gitleaks Security Scan Results
+              
+              **❌ Potential secrets detected:**
+              
+              ${report.map(secret => `
+              - **File**: \`${secret.File}\`
+              - **Line**: ${secret.StartLine}
+              - **Rule**: ${secret.RuleID}
+              - **Description**: ${secret.Description}
+              `).join('\n')}
+              
+              **Action Required**: Please remove or redact the detected secrets before merging.`;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            } else {
+              const comment = `## 🔒 Gitleaks Security Scan Results
+              
+              **✅ No secrets detected** - This PR is safe to merge.`;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
+          } catch (error) {
+            console.log('No Gitleaks report found or error reading report');
+          }
+
+    - name: Upload to GitHub Security
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      run: |
+        if [ -f "gitleaks-report.json" ]; then
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/${{ github.repository }}/security-advisories \
+            -f summary="Gitleaks Security Scan Results" \
+            -f description="Automated secret detection scan results" \
+            --field files=@gitleaks-report.json || echo "Failed to upload to GitHub Security"
+        fi
+
+  gitleaks-baseline:
+    name: Generate Gitleaks Baseline
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install Gitleaks
+      run: |
+        curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v${{ env.GITLEAKS_VERSION }}/gitleaks_${{ env.GITLEAKS_VERSION }}_linux_x64.tar.gz | tar -xz
+        chmod +x gitleaks
+        sudo mv gitleaks /usr/local/bin/
+
+    - name: Generate baseline
+      run: |
+        gitleaks detect \
+          --source . \
+          --verbose \
+          --redact \
+          --report-format json \
+          --report-path gitleaks-baseline.json \
+          --exit-code 0
+
+    - name: Upload baseline
+      uses: actions/upload-artifact@v3
+      with:
+        name: gitleaks-baseline-${{ github.run_id }}
+        path: gitleaks-baseline.json
+        retention-days: 90
+
+    - name: Comment with baseline results
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          try {
+            const baseline = JSON.parse(fs.readFileSync('gitleaks-baseline.json', 'utf8'));
+            const comment = `## 🔒 Gitleaks Baseline Generated
+              
+              **Baseline contains ${baseline.length} entries**
+              
+              This baseline can be used to ignore known false positives in future scans.`;
+              
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          } catch (error) {
+            console.log('Error reading baseline');
+          }

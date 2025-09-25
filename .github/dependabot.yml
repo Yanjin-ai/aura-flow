@@ -1,0 +1,159 @@
+version: 2
+updates:
+  # 前端依赖更新
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "security-team"
+    assignees:
+      - "security-team"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "frontend"
+    ignore:
+      # 忽略开发依赖的自动更新
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+        dependency-type: "development"
+    # 高危 CVE 自动创建 PR
+    vulnerability-alerts:
+      enabled: true
+    # 要求 CI 通过
+    pull-requests:
+      default-branch: "main"
+      versioning-strategy: "increase"
+
+  # 后端依赖更新
+  - package-ecosystem: "npm"
+    directory: "/server"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "security-team"
+    assignees:
+      - "security-team"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "backend"
+    ignore:
+      # 忽略开发依赖的自动更新
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+        dependency-type: "development"
+    vulnerability-alerts:
+      enabled: true
+    pull-requests:
+      default-branch: "main"
+      versioning-strategy: "increase"
+
+  # GitHub Actions 更新
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "security-team"
+    assignees:
+      - "security-team"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    vulnerability-alerts:
+      enabled: true
+    pull-requests:
+      default-branch: "main"
+      versioning-strategy: "increase"
+
+  # Docker 镜像更新
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "security-team"
+    assignees:
+      - "security-team"
+    commit-message:
+      prefix: "docker"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"
+    vulnerability-alerts:
+      enabled: true
+    pull-requests:
+      default-branch: "main"
+      versioning-strategy: "increase"
+
+  # Docker Compose 更新
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "security-team"
+    assignees:
+      - "security-team"
+    commit-message:
+      prefix: "docker"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker-compose"
+    vulnerability-alerts:
+      enabled: true
+    pull-requests:
+      default-branch: "main"
+      versioning-strategy: "increase"
+
+  # 安全策略更新
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 20
+    reviewers:
+      - "security-team"
+    assignees:
+      - "security-team"
+    commit-message:
+      prefix: "security"
+      include: "scope"
+    labels:
+      - "security"
+      - "dependencies"
+    # 仅处理安全更新
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+    vulnerability-alerts:
+      enabled: true
+    pull-requests:
+      default-branch: "main"
+      versioning-strategy: "increase"

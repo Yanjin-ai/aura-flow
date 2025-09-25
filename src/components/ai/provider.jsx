@@ -1,6 +1,6 @@
 import { DAILY_SYSTEM_PROMPT, DAILY_USER_PROMPT_TEMPLATE, DAILY_RESULT_SCHEMA } from "./prompts/daily";
 import { WEEKLY_SYSTEM_PROMPT, WEEKLY_USER_PROMPT_TEMPLATE, WEEKLY_RESULT_SCHEMA } from "./prompts/weekly";
-import { TASK_CLASSIFY_SYSTEM_PROMPT, TASK_CLASSIFY_USER_PROMPT_TEMPLATE, TASK_CLASSIFY_RESULT_SCHEMA } from "./prompts/classify";
+import { TASK_CLASSIFY_SYSTEM_PROMPT, TASK_CLASSIFY_USER_PROMPT_TEMPLATE, TASK_CLASSIFY_RESULT_SCHEMA } from "./prompts/classify.alias.js";
 import { PROVIDER_MODE } from './flags';
 import { InvokeLLM } from '@/api/integrations';
 

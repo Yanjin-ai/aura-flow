@@ -1,23 +1,21 @@
-import { base44 } from './base44Client';
+import { apiClient } from '../lib/apiClient.js';
 
+// 导出集成服务接口（使用新的平台适配层）
+export const Core = apiClient.integrations.Core;
 
+export const InvokeLLM = apiClient.integrations.Core.InvokeLLM;
 
+export const SendEmail = apiClient.integrations.Core.SendEmail;
 
-export const Core = base44.integrations.Core;
+export const UploadFile = apiClient.integrations.Core.UploadFile;
 
-export const InvokeLLM = base44.integrations.Core.InvokeLLM;
+export const GenerateImage = apiClient.integrations.Core.GenerateImage;
 
-export const SendEmail = base44.integrations.Core.SendEmail;
+export const ExtractDataFromUploadedFile = apiClient.integrations.Core.ExtractDataFromUploadedFile;
 
-export const UploadFile = base44.integrations.Core.UploadFile;
+export const CreateFileSignedUrl = apiClient.integrations.Core.CreateFileSignedUrl;
 
-export const GenerateImage = base44.integrations.Core.GenerateImage;
-
-export const ExtractDataFromUploadedFile = base44.integrations.Core.ExtractDataFromUploadedFile;
-
-export const CreateFileSignedUrl = base44.integrations.Core.CreateFileSignedUrl;
-
-export const UploadPrivateFile = base44.integrations.Core.UploadPrivateFile;
+export const UploadPrivateFile = apiClient.integrations.Core.UploadPrivateFile;
 
 
 

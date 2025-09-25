@@ -1,15 +1,13 @@
-import { base44 } from './base44Client';
+import { apiClient } from '../lib/apiClient.js';
 
+// 导出实体操作接口（使用新的平台适配层）
+export const Task = apiClient.entities.Task;
 
-export const Task = base44.entities.Task;
+export const Insight = apiClient.entities.Insight;
 
-export const Insight = base44.entities.Insight;
+export const Reflection = apiClient.entities.Reflection;
 
-export const Reflection = base44.entities.Reflection;
+export const InsightFeedback = apiClient.entities.InsightFeedback;
 
-export const InsightFeedback = base44.entities.InsightFeedback;
-
-
-
-// auth sdk:
-export const User = base44.auth;
+// 认证服务接口
+export const User = apiClient.auth;

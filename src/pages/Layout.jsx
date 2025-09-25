@@ -4,7 +4,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Brain, BarChart3, Calendar, Settings, History } from "lucide-react"; // Added History icon
-import { LanguageProvider, useLanguage } from "./components/i18n/LanguageContext";
+import { LanguageProvider, useLanguage } from "@/components/i18n/LanguageContext";
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
@@ -12,44 +12,6 @@ export default function Layout({ children, currentPageName }) {
   return (
     <LanguageProvider>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-        <style jsx>{`
-          :root {
-            --primary: #1e293b;
-            --primary-light: #334155;
-            --accent: #f97316;
-            --accent-light: #fb923c;
-            --surface: #ffffff;
-            --background: #f8fafc;
-          }
-          
-          /* iPhone 风格开关样式 */
-          [data-state="checked"] {
-            background-color: #34d399 !important;
-          }
-          
-          [data-state="unchecked"] {
-            background-color: #e2e8f0 !important;
-          }
-          
-          [data-state="checked"]:hover {
-            background-color: #10b981 !important;
-          }
-          
-          [data-state="unchecked"]:hover {
-            background-color: #cbd5e1 !important;
-          }
-          
-          /* 开关按钮的过渡效果 */
-          button[role="switch"] {
-            transition: background-color 0.2s ease-in-out !important;
-          }
-          
-          /* 开关内部圆点的样式 */
-          button[role="switch"] > span {
-            background-color: white !important;
-            transition: transform 0.2s ease-in-out !important;
-          }
-        `}</style>
 
         <LayoutContent currentPageName={currentPageName}>
           {children}

@@ -1,0 +1,33 @@
+# Aura Flow - Robots.txt
+# 禁止搜索引擎索引敏感路由
+
+User-agent: *
+Allow: /
+
+# 禁止索引敏感页面
+Disallow: /admin
+Disallow: /monitoring
+Disallow: /debug
+Disallow: /api/
+Disallow: /metrics
+Disallow: /health
+Disallow: /readyz
+Disallow: /status
+Disallow: /data-management
+Disallow: /experimental-features
+
+# 禁止索引用户相关页面
+Disallow: /Settings
+Disallow: /ReflectionHistory
+Disallow: /FeatureX
+
+# 允许索引公共页面
+Allow: /privacy
+Allow: /tos
+Allow: /
+
+# 站点地图
+Sitemap: https://yourdomain.com/sitemap.xml
+
+# 爬取延迟（秒）
+Crawl-delay: 1

@@ -1,0 +1,62 @@
+{
+  "newInsights": {
+    "staging": true,
+    "prod": false,
+    "allowList": ["admin@yourdomain.com", "test@yourdomain.com"],
+    "description": "新的洞察生成功能"
+  },
+  "advancedTaskManagement": {
+    "staging": true,
+    "prod": false,
+    "allowList": ["admin@yourdomain.com"],
+    "description": "高级任务管理功能"
+  },
+  "aiCostOptimization": {
+    "staging": true,
+    "prod": true,
+    "allowList": [],
+    "description": "AI 成本优化功能"
+  },
+  "realTimeCollaboration": {
+    "staging": false,
+    "prod": false,
+    "allowList": ["admin@yourdomain.com"],
+    "description": "实时协作功能"
+  },
+  "advancedAnalytics": {
+    "staging": true,
+    "prod": false,
+    "allowList": ["analyst@yourdomain.com"],
+    "description": "高级分析功能"
+  },
+  "betaFeatures": {
+    "staging": true,
+    "prod": false,
+    "allowList": ["beta@yourdomain.com"],
+    "description": "Beta 功能集合"
+  },
+  "darkMode": {
+    "staging": true,
+    "prod": true,
+    "allowList": [],
+    "description": "深色模式"
+  },
+  "exportToPDF": {
+    "staging": true,
+    "prod": false,
+    "allowList": ["admin@yourdomain.com"],
+    "description": "PDF 导出功能"
+  },
+  "voiceInput": {
+    "staging": false,
+    "prod": false,
+    "allowList": ["voice@yourdomain.com"],
+    "description": "语音输入功能"
+  },
+  "mobileApp": {
+    "staging": false,
+    "prod": false,
+    "allowList": [],
+    "description": "移动应用功能"
+  }
+}

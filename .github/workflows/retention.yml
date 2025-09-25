@@ -1,0 +1,117 @@
+name: Data Retention Cleanup
+
+on:
+  schedule:
+    - cron: '0 1 * * *'  # 每天 UTC 1:00 运行
+  workflow_dispatch:  # 允许手动触发
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  retention-cleanup:
+    name: Data Retention Cleanup
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+        
+    - name: Install dependencies
+      run: |
+        cd server
+        pnpm install --frozen-lockfile
+        
+    - name: Generate Prisma client
+      run: |
+        cd server
+        pnpm prisma generate
+        
+    - name: Run data retention cleanup
+      run: |
+        cd server
+        node scripts/retention.js
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        LOGS_RETENTION_DAYS: ${{ secrets.LOGS_RETENTION_DAYS || '30' }}
+        AI_USAGE_RETENTION_DAYS: ${{ secrets.AI_USAGE_RETENTION_DAYS || '90' }}
+        LOGS_DIR: ${{ secrets.LOGS_DIR || './logs' }}
+        
+    - name: Upload cleanup report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: retention-cleanup-report-$(date +%Y%m%d)
+        path: |
+          server/logs/
+        retention-days: 7
+        
+    - name: Notify cleanup completion
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ 数据保留清理任务成功完成"
+        else
+          echo "❌ 数据保留清理任务失败"
+        fi
+
+  # 手动测试任务
+  test-retention:
+    name: Test Data Retention (Dry Run)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+        
+    - name: Install dependencies
+      run: |
+        cd server
+        pnpm install --frozen-lockfile
+        
+    - name: Generate Prisma client
+      run: |
+        cd server
+        pnpm prisma generate
+        
+    - name: Test data retention cleanup (dry run)
+      run: |
+        cd server
+        node scripts/retention.js --dry-run
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        LOGS_RETENTION_DAYS: ${{ secrets.LOGS_RETENTION_DAYS || '30' }}
+        AI_USAGE_RETENTION_DAYS: ${{ secrets.AI_USAGE_RETENTION_DAYS || '90' }}
+        LOGS_DIR: ${{ secrets.LOGS_DIR || './logs' }}
+        
+    - name: Upload test report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: retention-test-report-$(date +%Y%m%d)
+        path: |
+          server/logs/
+        retention-days: 3

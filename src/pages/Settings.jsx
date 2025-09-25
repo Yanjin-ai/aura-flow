@@ -6,13 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Settings as SettingsIcon, Clock, Bell, Brain, Save, CheckCircle, Sparkles, User as UserIcon, Globe } from "lucide-react";
+import { Settings as SettingsIcon, Clock, Bell, Brain, Save, CheckCircle, Sparkles, User as UserIcon, Globe, Shield, Beaker, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 import { useLanguage } from "../components/i18n/LanguageContext";
 import { AI_ENABLED } from "../components/ai/flags";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export default function Settings() {
   const { language, changeLanguage, t } = useLanguage();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [settings, setSettings] = useState({
     auto_rollover_enabled: true,
@@ -74,6 +78,16 @@ export default function Settings() {
       alert("保存设置失败，请重试");
     } finally {
       setSaving(false);
+    }
+  };
+
+  // 处理用户登出
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('登出失败:', error);
     }
   };
 
@@ -293,6 +307,68 @@ export default function Settings() {
           </Card>
         </motion.div>
 
+        {/* 数据管理 */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+        >
+          <Card className="border-red-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-700">
+                <Shield className="w-5 h-5" />
+                数据管理
+              </CardTitle>
+              <CardDescription>
+                管理您的个人数据，符合 GDPR 和其他隐私法规
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg">
+                <div>
+                  <h4 className="font-medium text-red-800">导出我的数据</h4>
+                  <p className="text-sm text-red-600">下载您的所有个人数据</p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => window.open('/data-management', '_blank')}
+                >
+                  导出数据
+                </Button>
+              </div>
+              
+              <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg">
+                <div>
+                  <h4 className="font-medium text-red-800">删除我的数据</h4>
+                  <p className="text-sm text-red-600">永久删除您的账户和所有数据</p>
+                </div>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={() => window.open('/data-management', '_blank')}
+                >
+                  删除数据
+                </Button>
+              </div>
+              
+              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                <div>
+                  <h4 className="font-medium text-blue-800">实验功能</h4>
+                  <p className="text-sm text-blue-600">查看和管理新功能访问权限</p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => window.open('/experimental-features', '_blank')}
+                >
+                  管理功能
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
         {/* 保存按钮 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -320,6 +396,23 @@ export default function Settings() {
                 {t('common.save')}
               </>
             )}
+          </Button>
+        </motion.div>
+
+        {/* 登出按钮 */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="mt-6"
+        >
+          <Button
+            onClick={handleLogout}
+            variant="outline"
+            className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 gap-2 h-12"
+          >
+            <LogOut className="w-4 h-4" />
+            退出登录
           </Button>
         </motion.div>
       </div>

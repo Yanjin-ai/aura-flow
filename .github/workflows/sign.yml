@@ -1,0 +1,213 @@
+name: Container Image Signing
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+env:
+  COSIGN_VERSION: "2.2.0"
+
+jobs:
+  sign-image:
+    name: Sign Container Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ github.repository }}/aura-flow-backend
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.backend
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Install Cosign
+      run: |
+        curl -O -L "https://github.com/sigstore/cosign/releases/download/v${{ env.COSIGN_VERSION }}/cosign-linux-amd64"
+        chmod +x cosign-linux-amd64
+        sudo mv cosign-linux-amd64 /usr/local/bin/cosign
+
+    - name: Sign container image
+      run: |
+        # 使用 OIDC 进行无密钥签名
+        cosign sign \
+          --yes \
+          --oidc-issuer https://token.actions.githubusercontent.com \
+          --oidc-client-id sigstore \
+          ghcr.io/${{ github.repository }}/aura-flow-backend:${{ steps.meta.outputs.version }}
+
+    - name: Verify signature
+      run: |
+        # 验证签名
+        cosign verify \
+          --certificate-identity-regexp ".*" \
+          --certificate-oidc-issuer-regexp ".*" \
+          ghcr.io/${{ github.repository }}/aura-flow-backend:${{ steps.meta.outputs.version }}
+
+    - name: Generate signature verification example
+      run: |
+        cat > signature-verification.md << EOF
+        # Container Image Signature Verification
+        
+        ## Verify with Cosign
+        
+        \`\`\`bash
+        # Install Cosign
+        curl -O -L "https://github.com/sigstore/cosign/releases/download/v${{ env.COSIGN_VERSION }}/cosign-linux-amd64"
+        chmod +x cosign-linux-amd64
+        sudo mv cosign-linux-amd64 /usr/local/bin/cosign
+        
+        # Verify signature
+        cosign verify \\
+          --certificate-identity-regexp ".*" \\
+          --certificate-oidc-issuer-regexp ".*" \\
+          ghcr.io/${{ github.repository }}/aura-flow-backend:${{ steps.meta.outputs.version }}
+        \`\`\`
+        
+        ## Verify with Docker
+        
+        \`\`\`bash
+        # Pull and verify
+        docker pull ghcr.io/${{ github.repository }}/aura-flow-backend:${{ steps.meta.outputs.version }}
+        cosign verify \\
+          --certificate-identity-regexp ".*" \\
+          --certificate-oidc-issuer-regexp ".*" \\
+          ghcr.io/${{ github.repository }}/aura-flow-backend:${{ steps.meta.outputs.version }}
+        \`\`\`
+        
+        ## Expected Output
+        
+        The verification should show:
+        - Certificate details
+        - OIDC issuer information
+        - Signature verification status
+        
+        ## Security Benefits
+        
+        - **Integrity**: Ensures image hasn't been tampered with
+        - **Authenticity**: Confirms image comes from trusted source
+        - **Non-repudiation**: Provides cryptographic proof of origin
+        - **Supply Chain Security**: Links image to build process
+        
+        EOF
+
+    - name: Upload signature verification example
+      uses: actions/upload-artifact@v3
+      with:
+        name: signature-verification-${{ github.run_id }}
+        path: signature-verification.md
+        retention-days: 90
+
+    - name: Attach signature verification to Release
+      if: github.event_name == 'release'
+      run: |
+        gh release upload ${{ github.event.release.tag_name }} \
+          signature-verification.md \
+          --clobber
+
+  sign-frontend:
+    name: Sign Frontend Assets
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Build frontend
+      run: pnpm build
+
+    - name: Install Cosign
+      run: |
+        curl -O -L "https://github.com/sigstore/cosign/releases/download/v${{ env.COSIGN_VERSION }}/cosign-linux-amd64"
+        chmod +x cosign-linux-amd64
+        sudo mv cosign-linux-amd64 /usr/local/bin/cosign
+
+    - name: Create frontend asset bundle
+      run: |
+        tar -czf frontend-assets-${{ github.event.release.tag_name }}.tar.gz dist/
+        sha256sum frontend-assets-${{ github.event.release.tag_name }}.tar.gz > frontend-assets-${{ github.event.release.tag_name }}.tar.gz.sha256
+
+    - name: Sign frontend assets
+      run: |
+        cosign sign-blob \
+          --yes \
+          --oidc-issuer https://token.actions.githubusercontent.com \
+          --oidc-client-id sigstore \
+          --output-file frontend-assets-${{ github.event.release.tag_name }}.tar.gz.sig \
+          frontend-assets-${{ github.event.release.tag_name }}.tar.gz
+
+    - name: Verify frontend signature
+      run: |
+        cosign verify-blob \
+          --certificate-identity-regexp ".*" \
+          --certificate-oidc-issuer-regexp ".*" \
+          --signature frontend-assets-${{ github.event.release.tag_name }}.tar.gz.sig \
+          --certificate frontend-assets-${{ github.event.release.tag_name }}.tar.gz.sig \
+          frontend-assets-${{ github.event.release.tag_name }}.tar.gz
+
+    - name: Attach signed frontend assets to Release
+      run: |
+        gh release upload ${{ github.event.release.tag_name }} \
+          frontend-assets-${{ github.event.release.tag_name }}.tar.gz \
+          frontend-assets-${{ github.event.release.tag_name }}.tar.gz.sha256 \
+          frontend-assets-${{ github.event.release.tag_name }}.tar.gz.sig \
+          --clobber
+
+    - name: Upload frontend signature artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-signature-${{ github.run_id }}
+        path: |
+          frontend-assets-${{ github.event.release.tag_name }}.tar.gz
+          frontend-assets-${{ github.event.release.tag_name }}.tar.gz.sha256
+          frontend-assets-${{ github.event.release.tag_name }}.tar.gz.sig
+        retention-days: 90

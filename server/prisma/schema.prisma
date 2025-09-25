@@ -1,0 +1,161 @@
+// Prisma 数据库模式定义
+// 支持 SQLite（开发）和 PostgreSQL（生产）
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 用户模型
+model User {
+  id                        String   @id @default(cuid())
+  email                     String   @unique
+  name                      String?
+  password_hash             String?
+  has_seen_welcome_guide    Boolean  @default(false)
+  language                  String   @default("zh-CN")
+  auto_rollover_enabled     Boolean  @default(true)
+  auto_rollover_days        Int      @default(3)
+  rollover_notification_enabled Boolean @default(true)
+  ai_daily_insights         Boolean  @default(true)
+  ai_weekly_insights        Boolean  @default(true)
+  ai_url_extraction         Boolean  @default(true)
+  created_at                DateTime @default(now())
+  updated_at                DateTime @updatedAt
+  
+  // 关联关系
+  tasks                     Task[]
+  insights                  Insight[]
+  reflections               Reflection[]
+  insight_feedback          InsightFeedback[]
+  sessions                  Session[]
+  ai_usage                  AiUsage[]
+  
+  @@map("users")
+}
+
+// 任务模型
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  status      String   @default("PENDING")  // 使用字符串替代枚举
+  priority    String   @default("MEDIUM")   // 使用字符串替代枚举
+  due_date    DateTime?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  user_id     String
+  
+  // 关联关系
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  // 扩展字段
+  tags        String?  // JSON 字符串存储标签数组
+  metadata    String?  // JSON 字符串存储元数据
+  
+  @@map("tasks")
+}
+
+// 洞察模型
+model Insight {
+  id         String      @id @default(cuid())
+  title      String
+  content    String
+  type       String      @default("DAILY")  // 使用字符串替代枚举
+  created_at DateTime    @default(now())
+  updated_at DateTime    @updatedAt
+  user_id    String
+  
+  // 关联关系
+  user       User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  feedback   InsightFeedback[]
+  
+  // 扩展字段
+  metadata   String?     // JSON 字符串存储元数据
+  
+  @@map("insights")
+}
+
+// 反思模型
+model Reflection {
+  id         String   @id @default(cuid())
+  content    String
+  mood       String?  @default("NEUTRAL")  // 使用字符串替代枚举
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user_id    String
+  
+  // 关联关系
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  // 扩展字段
+  metadata   String?  // JSON 字符串存储元数据
+  
+  @@map("reflections")
+}
+
+// 洞察反馈模型
+model InsightFeedback {
+  id         String   @id @default(cuid())
+  insight_id String
+  rating     Int      // 1-5 评分
+  comment    String?
+  created_at DateTime @default(now())
+  user_id    String
+  
+  // 关联关系
+  insight    Insight  @relation(fields: [insight_id], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@map("insight_feedback")
+}
+
+// 用户会话模型（用于 JWT 管理）
+model Session {
+  id         String   @id @default(cuid())
+  user_id    String
+  token_hash String   @unique
+  expires_at DateTime
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  
+  // 关联关系
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@map("sessions")
+}
+
+// AI 使用记录模型
+model AiUsage {
+  id          String   @id @default(cuid())
+  user_id     String?  // 可为空，支持系统级调用
+  route       String   // API 路由，如 /insights/generate
+  provider    String   // AI 提供商，如 openai, mock
+  model       String?  // 模型名称，如 gpt-3.5-turbo
+  tokens_in   Int?     // 输入 token 数
+  tokens_out  Int?     // 输出 token 数
+  cost_usd    Float?   // 成本（美元）
+  status      String   // 状态：success, failed, degraded
+  error_msg   String?  // 错误信息
+  created_at  DateTime @default(now())
+  
+  // 关联关系
+  user        User?    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  // 索引
+  @@index([created_at])
+  @@index([route, status])
+  @@index([provider, status])
+  @@index([user_id, created_at])
+  @@map("ai_usage")
+}
+
+// 注意：SQLite 不支持枚举类型，使用字符串替代
+// 任务状态: PENDING, IN_PROGRESS, COMPLETED, CANCELLED
+// 优先级: LOW, MEDIUM, HIGH  
+// 洞察类型: DAILY, WEEKLY, CUSTOM
+// 心情: POSITIVE, NEUTRAL, NEGATIVE

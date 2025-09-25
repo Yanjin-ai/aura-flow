@@ -1,0 +1,294 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v1.0.0)'
+        required: true
+        type: string
+
+env:
+  NODE_VERSION: '18'
+  PNPM_VERSION: '8'
+
+jobs:
+  # 生成变更日志
+  changelog:
+    name: Generate Changelog
+    runs-on: ubuntu-latest
+    outputs:
+      changelog: ${{ steps.changelog.outputs.content }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # 获取完整历史用于生成变更日志
+        
+    - name: Get version from tag
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.tag }}"
+        else
+          VERSION="${GITHUB_REF#refs/tags/}"
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+        
+    - name: Generate changelog
+      id: changelog
+      run: |
+        chmod +x scripts/changelog.sh
+        
+        # 获取上一个标签
+        LAST_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+        
+        # 生成变更日志
+        ./scripts/changelog.sh --tag "${{ steps.version.outputs.version }}" --last-tag "$LAST_TAG" --force
+        
+        # 提取变更日志内容
+        CHANGELOG_CONTENT=$(awk '/^## \['"${{ steps.version.outputs.version }}"'\]/,/^## \[/ {if(/^## \[/ && !/^## \['"${{ steps.version.outputs.version }}"'\]/) exit; print}' CHANGELOG.md | tail -n +2 | head -n -1)
+        echo "content<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGELOG_CONTENT" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+    - name: Upload changelog
+      uses: actions/upload-artifact@v3
+      with:
+        name: changelog
+        path: CHANGELOG.md
+        retention-days: 30
+
+  # 构建前端
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    needs: changelog
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: ${{ env.PNPM_VERSION }}
+        
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+      
+    - name: Build frontend
+      run: pnpm build
+      env:
+        VITE_API_BASE_URL: https://api.yourdomain.com
+        VITE_AI_PROVIDER: openai
+        VITE_ENABLE_TELEMETRY: true
+        VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        VITE_BUILD_VERSION: ${{ needs.changelog.outputs.version }}
+        
+    - name: Upload frontend build
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-build
+        path: dist/
+        retention-days: 30
+
+  # 构建后端镜像
+  build-backend:
+    name: Build Backend
+    runs-on: ubuntu-latest
+    needs: changelog
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Login to Docker Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ secrets.DOCKER_REGISTRY }}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        
+    - name: Build and push backend image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: Dockerfile.backend
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_REGISTRY }}/aura-flow-backend:${{ needs.changelog.outputs.version }}
+          ${{ secrets.DOCKER_REGISTRY }}/aura-flow-backend:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          BUILD_VERSION=${{ needs.changelog.outputs.version }}
+          BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          VCS_REF=${{ github.sha }}
+
+  # 创建 GitHub Release
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [changelog, build-frontend, build-backend]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download frontend build
+      uses: actions/download-artifact@v3
+      with:
+        name: frontend-build
+        path: dist/
+        
+    - name: Download changelog
+      uses: actions/download-artifact@v3
+      with:
+        name: changelog
+        path: .
+        
+    - name: Create release archive
+      run: |
+        # 创建发布包
+        tar -czf aura-flow-${{ needs.changelog.outputs.version }}.tar.gz dist/
+        
+        # 生成构建摘要
+        cat > build-summary.md << EOF
+        # Aura Flow ${{ needs.changelog.outputs.version }} 构建摘要
+        
+        ## 构建信息
+        - 版本: ${{ needs.changelog.outputs.version }}
+        - 构建时间: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+        - 提交: ${{ github.sha }}
+        - 分支: ${{ github.ref_name }}
+        
+        ## 构建产物
+        - 前端构建: dist/ (已压缩为 tar.gz)
+        - 后端镜像: ${{ secrets.DOCKER_REGISTRY }}/aura-flow-backend:${{ needs.changelog.outputs.version }}
+        
+        ## 部署说明
+        1. 解压前端构建包到 Web 服务器
+        2. 拉取并部署后端镜像
+        3. 执行数据库迁移
+        4. 验证服务状态
+        
+        ## 回滚说明
+        如需回滚，请使用 \`scripts/rollback.sh\` 脚本。
+        EOF
+        
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ needs.changelog.outputs.version }}
+        name: Aura Flow ${{ needs.changelog.outputs.version }}
+        body: |
+          ${{ needs.changelog.outputs.changelog }}
+          
+          ## 构建信息
+          - 构建时间: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          - 提交: ${{ github.sha }}
+          - 分支: ${{ github.ref_name }}
+          
+          ## 部署说明
+          1. 解压前端构建包到 Web 服务器
+          2. 拉取并部署后端镜像
+          3. 执行数据库迁移
+          4. 验证服务状态
+          
+          ## 回滚说明
+          如需回滚，请使用 `scripts/rollback.sh` 脚本。
+        files: |
+          aura-flow-${{ needs.changelog.outputs.version }}.tar.gz
+          build-summary.md
+        draft: false
+        prerelease: ${{ contains(needs.changelog.outputs.version, 'rc') || contains(needs.changelog.outputs.version, 'beta') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 标记 Sentry Release
+  sentry-release:
+    name: Mark Sentry Release
+    runs-on: ubuntu-latest
+    needs: [changelog, build-frontend, build-backend]
+    if: env.SENTRY_DSN != ''
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Create Sentry Release
+      uses: getsentry/action-release@v1
+      with:
+        environment: production
+        version: ${{ needs.changelog.outputs.version }}
+        sourcemaps: dist/
+        url_prefix: '~/'
+        finalize: true
+      env:
+        SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+        SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        
+    - name: Associate commits with release
+      run: |
+        # 获取提交列表
+        COMMITS=$(git log --pretty=format:"%H" --no-merges)
+        
+        # 关联提交到 Sentry Release
+        for commit in $COMMITS; do
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.SENTRY_AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"commits\":[{\"id\":\"$commit\",\"message\":\"$(git log --format=%s -n 1 $commit)\"}]}" \
+            "https://sentry.io/api/0/organizations/${{ secrets.SENTRY_ORG }}/releases/${{ needs.changelog.outputs.version }}/commits/"
+        done
+
+  # 部署到生产环境（可选）
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [changelog, build-frontend, build-backend, create-release]
+    if: github.ref == 'refs/heads/main' && !contains(needs.changelog.outputs.version, 'rc') && !contains(needs.changelog.outputs.version, 'beta')
+    environment: production
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Deploy to production server
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd /path/to/your/aura-flow-deployment
+          
+          # 拉取最新镜像
+          docker pull ${{ secrets.DOCKER_REGISTRY }}/aura-flow-backend:${{ needs.changelog.outputs.version }}
+          
+          # 更新 docker-compose 配置
+          sed -i "s|image:.*aura-flow-backend:.*|image: ${{ secrets.DOCKER_REGISTRY }}/aura-flow-backend:${{ needs.changelog.outputs.version }}|" docker-compose.prod.yml
+          
+          # 部署新版本
+          docker-compose -f docker-compose.prod.yml down
+          docker-compose -f docker-compose.prod.yml up -d
+          
+          # 执行数据库迁移
+          docker-compose -f docker-compose.prod.yml exec api pnpm migrate
+          
+          # 验证部署
+          sleep 30
+          curl -f http://localhost:3001/health || exit 1
+          
+          echo "部署完成: ${{ needs.changelog.outputs.version }}"

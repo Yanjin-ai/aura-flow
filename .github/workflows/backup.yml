@@ -1,0 +1,69 @@
+name: Daily Backup
+
+on:
+  schedule:
+    # 每天 UTC 时间 02:00 执行备份
+    - cron: '0 2 * * *'
+  workflow_dispatch: # 允许手动触发
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  backup:
+    name: Database Backup
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        
+    - name: Install PostgreSQL client
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client
+        
+    - name: Configure AWS CLI
+      if: env.S3_BUCKET != ''
+      run: |
+        aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws configure set default.region ${{ secrets.AWS_REGION || 'us-east-1' }}
+        
+    - name: Create backup directory
+      run: mkdir -p server/backups
+      
+    - name: Run database backup
+      run: |
+        cd server
+        chmod +x scripts/backup.sh
+        ./scripts/backup.sh
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        S3_BUCKET: ${{ secrets.S3_BUCKET }}
+        S3_PREFIX: ${{ secrets.S3_PREFIX || 'backups/' }}
+        S3_REGION: ${{ secrets.S3_REGION || 'us-east-1' }}
+        BACKUP_RETENTION_DAYS: ${{ secrets.BACKUP_RETENTION_DAYS || '30' }}
+        
+    - name: Upload backup artifacts
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: backup-$(date +%Y%m%d)
+        path: server/backups/
+        retention-days: 7
+        
+    - name: Notify backup completion
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ 数据库备份成功完成"
+        else
+          echo "❌ 数据库备份失败"
+        fi

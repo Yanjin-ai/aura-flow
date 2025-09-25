@@ -1,0 +1,197 @@
+repos:
+  # 基础代码质量检查
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        name: Trim Trailing Whitespace
+        description: Remove trailing whitespace
+      - id: end-of-file-fixer
+        name: Fix End of Files
+        description: Ensure files end with a newline
+      - id: check-yaml
+        name: Check YAML
+        description: Check YAML syntax
+        args: ['--unsafe']
+      - id: check-json
+        name: Check JSON
+        description: Check JSON syntax
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+        description: Check for merge conflict markers
+      - id: check-added-large-files
+        name: Check for large files
+        description: Prevent large files from being committed
+        args: ['--maxkb=1000']
+      - id: check-case-conflict
+        name: Check for case conflicts
+        description: Check for files that would conflict in case-insensitive filesystems
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+        description: Check for merge conflict markers
+      - id: debug-statements
+        name: Check for debug statements
+        description: Check for debugger statements and console.logs
+      - id: check-executables-have-shebangs
+        name: Check executables have shebangs
+        description: Check that executables have shebangs
+      - id: check-shebang-scripts-are-executable
+        name: Check shebang scripts are executable
+        description: Check that scripts with shebangs are executable
+
+  # 密钥泄露检测
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+      - id: gitleaks
+        name: Gitleaks
+        description: Detect hardcoded secrets and credentials
+        args: ['--verbose', '--redact']
+        stages: [commit, push]
+
+  # JavaScript/TypeScript 代码质量
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v8.55.0
+    hooks:
+      - id: eslint
+        name: ESLint
+        description: Lint JavaScript/TypeScript files
+        files: \.(js|jsx|ts|tsx)$
+        args: ['--fix', '--max-warnings=0']
+        additional_dependencies:
+          - eslint@8.55.0
+          - '@typescript-eslint/eslint-plugin@6.14.0'
+          - '@typescript-eslint/parser@6.14.0'
+          - 'eslint-plugin-react@7.33.2'
+          - 'eslint-plugin-react-hooks@4.6.0'
+
+  # Prettier 代码格式化
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        name: Prettier
+        description: Format code with Prettier
+        files: \.(js|jsx|ts|tsx|json|css|scss|md|yaml|yml)$
+        args: ['--write']
+
+  # Shell 脚本检查
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+        name: ShellCheck
+        description: Lint shell scripts
+        files: \.(sh|bash)$
+        args: ['--severity=warning']
+
+  # Docker 文件检查
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint
+        name: Hadolint
+        description: Lint Dockerfiles
+        files: Dockerfile.*
+        args: ['--ignore=DL3008', '--ignore=DL3009']
+
+  # 安全扫描
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        name: Detect Secrets
+        description: Detect secrets in code
+        args: ['--baseline', '.secrets.baseline']
+        exclude: |
+          (?x)^(
+            \.secrets\.baseline|
+            package-lock\.json|
+            pnpm-lock\.yaml|
+            \.git/.*
+          )$
+
+  # 许可证检查
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
+    rev: v1.3.2
+    hooks:
+      - id: python-safety-dependencies-check
+        name: Safety Dependencies Check
+        description: Check for known security vulnerabilities
+        files: requirements\.txt$
+        args: ['--full-report']
+
+  # 提交消息格式检查
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.13.0
+    hooks:
+      - id: commitizen
+        name: Commitizen
+        description: Check commit message format
+        stages: [commit-msg]
+
+  # 文档检查
+  - repo: https://github.com/pre-commit/mirrors-markdownlint
+    rev: v0.9.0
+    hooks:
+      - id: markdownlint
+        name: Markdownlint
+        description: Lint markdown files
+        args: ['--fix']
+        files: \.md$
+
+  # 许可证头检查
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.4
+    hooks:
+      - id: insert-license
+        name: Insert License
+        description: Insert license header in source files
+        args: ['--license-filepath', 'LICENSE', '--comment-style', 'js']
+        files: \.(js|jsx|ts|tsx)$
+        exclude: |
+          (?x)^(
+            node_modules/.*|
+            dist/.*|
+            build/.*|
+            \.git/.*
+          )$
+
+  # 自定义钩子
+  - repo: local
+    hooks:
+      - id: check-env-files
+        name: Check Environment Files
+        description: Ensure .env files are not committed
+        entry: bash -c 'if git diff --cached --name-only | grep -q "\.env$"; then echo "❌ .env files should not be committed"; exit 1; fi'
+        language: system
+        stages: [pre-commit]
+
+      - id: check-secrets
+        name: Check for Secrets
+        description: Check for common secret patterns
+        entry: bash -c 'if git diff --cached | grep -E "(password|secret|key|token).*=.*[a-zA-Z0-9]{20,}"; then echo "❌ Potential secret detected"; exit 1; fi'
+        language: system
+        stages: [pre-commit]
+
+      - id: check-docker-secrets
+        name: Check Docker Secrets
+        description: Check for secrets in Docker files
+        entry: bash -c 'if git diff --cached --name-only | grep -q "Dockerfile"; then if git diff --cached | grep -E "(password|secret|key|token)"; then echo "❌ Potential secret in Dockerfile"; exit 1; fi; fi'
+        language: system
+        stages: [pre-commit]
+
+      - id: validate-scripts
+        name: Validate Scripts
+        description: Validate shell scripts syntax
+        entry: bash -c 'for file in $(git diff --cached --name-only | grep "\.sh$"); do bash -n "$file" || exit 1; done'
+        language: system
+        stages: [pre-commit]
+
+      - id: check-commit-message
+        name: Check Commit Message
+        description: Check commit message format
+        entry: bash -c 'if ! echo "$1" | grep -qE "^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?: .+"; then echo "❌ Commit message must follow conventional commits format"; exit 1; fi'
+        language: system
+        stages: [commit-msg]
+        args: ['$1']

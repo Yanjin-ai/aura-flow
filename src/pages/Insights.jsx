@@ -19,6 +19,7 @@ import { useLanguage } from "@/components/i18n/LanguageContext";
 import FeedbackWidget from "../components/FeedbackWidget";
 import ReflectionEditor from "../components/ReflectionEditor";
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // BEGIN: Enhanced payload builders with deep insights
 function buildDailyPayload(tasks, date, userId) {
@@ -298,7 +299,7 @@ function InsightCard({ insight }) {
             <ul className="list-disc pl-5">
               {data.highlights?.map((h, i) => (
                 <li key={i}>
-                  <ReactMarkdown className="inline">{h}</ReactMarkdown>
+                  <ReactMarkdown className="inline" remarkPlugins={[remarkGfm]}>{h}</ReactMarkdown>
                 </li>
               ))}
             </ul>
@@ -306,13 +307,13 @@ function InsightCard({ insight }) {
             <ul className="list-disc pl-5">
               {data.recommendations?.map((r, i) => (
                 <li key={i}>
-                  <ReactMarkdown className="inline">{r}</ReactMarkdown>
+                  <ReactMarkdown className="inline" remarkPlugins={[remarkGfm]}>{r}</ReactMarkdown>
                 </li>
               ))}
             </ul>
             <h3 className="font-semibold">{t('insights.detailedContent')}</h3>
             <div className="whitespace-pre-line">
-              <ReactMarkdown>{data.content}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{data.content}</ReactMarkdown>
             </div>
           </div>
         </div>
