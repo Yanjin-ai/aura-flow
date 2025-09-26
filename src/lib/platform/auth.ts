@@ -75,39 +75,56 @@ export function createAuthService(): AuthService {
  * Mock 认证服务（开发环境使用）
  */
 class MockAuthService implements AuthService {
-  private mockUser: User = {
-    id: 'mock-user-id',
-    email: 'dev@example.com',
-    name: '开发用户',
-    has_seen_welcome_guide: true,
-    language: 'zh-CN',
-    auto_rollover_enabled: true,
-    auto_rollover_days: 3,
-    rollover_notification_enabled: true,
-    ai_daily_insights: true,
-    ai_weekly_insights: true,
-    ai_url_extraction: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  };
+  private getDefaultUser(): User {
+    return {
+      id: 'mock-user-id',
+      email: 'dev@example.com',
+      name: '开发用户',
+      has_seen_welcome_guide: true,
+      language: 'zh-CN',
+      auto_rollover_enabled: true,
+      auto_rollover_days: 3,
+      rollover_notification_enabled: true,
+      ai_daily_insights: true,
+      ai_weekly_insights: true,
+      ai_url_extraction: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+  }
   
   async me(): Promise<User> {
     // 模拟网络延迟
     await new Promise(resolve => setTimeout(resolve, 100));
-    return { ...this.mockUser };
+    
+    // 从本地存储读取用户信息，如果没有则返回默认用户
+    const storedUser = localStorage.getItem('mock_user_data');
+    if (storedUser) {
+      return JSON.parse(storedUser);
+    }
+    
+    return this.getDefaultUser();
   }
   
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     await new Promise(resolve => setTimeout(resolve, 200));
     
+    // 从本地存储读取用户信息，如果没有则创建新用户
+    let user = this.getDefaultUser();
+    const storedUser = localStorage.getItem('mock_user_data');
+    if (storedUser) {
+      user = JSON.parse(storedUser);
+    }
+    
     const response = {
-      user: { ...this.mockUser, email: credentials.email },
+      user: { ...user, email: credentials.email },
       token: 'mock-jwt-token',
       expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     };
     
-    // 保存 token 到本地存储
+    // 保存 token 和用户信息到本地存储
     localStorage.setItem('auth_token', response.token);
+    localStorage.setItem('mock_user_data', JSON.stringify(response.user));
     
     return response;
   }
@@ -116,8 +133,8 @@ class MockAuthService implements AuthService {
     await new Promise(resolve => setTimeout(resolve, 300));
     
     const newUser = {
-      ...this.mockUser,
-      id: 'mock-new-user-id',
+      ...this.getDefaultUser(),
+      id: `mock-user-${Date.now()}`,
       email: userData.email,
       name: userData.name,
       created_at: new Date().toISOString(),
@@ -130,22 +147,31 @@ class MockAuthService implements AuthService {
       expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     };
     
-    // 保存 token 到本地存储
+    // 保存 token 和用户信息到本地存储
     localStorage.setItem('auth_token', response.token);
+    localStorage.setItem('mock_user_data', JSON.stringify(response.user));
     
     return response;
   }
   
   async logout(): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 100));
-    // 清除本地存储的 token
+    // 清除本地存储的 token 和用户信息
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('mock_user_data');
   }
   
   async updateUser(userData: Partial<User>): Promise<User> {
     await new Promise(resolve => setTimeout(resolve, 150));
-    this.mockUser = { ...this.mockUser, ...userData, updated_at: new Date().toISOString() };
-    return { ...this.mockUser };
+    
+    // 从本地存储读取当前用户信息
+    const currentUser = await this.me();
+    const updatedUser = { ...currentUser, ...userData, updated_at: new Date().toISOString() };
+    
+    // 保存更新后的用户信息到本地存储
+    localStorage.setItem('mock_user_data', JSON.stringify(updatedUser));
+    
+    return updatedUser;
   }
   
   async isAuthenticated(): Promise<boolean> {

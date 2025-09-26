@@ -143,15 +143,47 @@ export function createDatabaseService(): DatabaseService {
  * Mock 数据库服务（开发环境使用）
  */
 class MockDatabaseService implements DatabaseService {
-  private tasksData: Task[] = [];
-  private insightsData: Insight[] = [];
-  private reflectionsData: Reflection[] = [];
-  private feedback: InsightFeedback[] = [];
+  private getTasksData(): Task[] {
+    const stored = localStorage.getItem('mock_tasks_data');
+    return stored ? JSON.parse(stored) : [];
+  }
+  
+  private setTasksData(tasks: Task[]): void {
+    localStorage.setItem('mock_tasks_data', JSON.stringify(tasks));
+  }
+  
+  private getInsightsData(): Insight[] {
+    const stored = localStorage.getItem('mock_insights_data');
+    return stored ? JSON.parse(stored) : [];
+  }
+  
+  private setInsightsData(insights: Insight[]): void {
+    localStorage.setItem('mock_insights_data', JSON.stringify(insights));
+  }
+  
+  private getReflectionsData(): Reflection[] {
+    const stored = localStorage.getItem('mock_reflections_data');
+    return stored ? JSON.parse(stored) : [];
+  }
+  
+  private setReflectionsData(reflections: Reflection[]): void {
+    localStorage.setItem('mock_reflections_data', JSON.stringify(reflections));
+  }
+  
+  private getFeedbackData(): InsightFeedback[] {
+    const stored = localStorage.getItem('mock_feedback_data');
+    return stored ? JSON.parse(stored) : [];
+  }
+  
+  private setFeedbackData(feedback: InsightFeedback[]): void {
+    localStorage.setItem('mock_feedback_data', JSON.stringify(feedback));
+  }
   
   tasks = {
     filter: async (filters = {}) => {
       await new Promise(resolve => setTimeout(resolve, 100));
-      return this.tasksData.filter(task => {
+      const tasksData = this.getTasksData();
+      return tasksData.filter(task => {
         if (filters.status && task.status !== filters.status) return false;
         if (filters.priority && task.priority !== filters.priority) return false;
         if (filters.user_id && task.user_id !== filters.user_id) return false;
@@ -161,6 +193,7 @@ class MockDatabaseService implements DatabaseService {
     
     create: async (data: CreateTaskData) => {
       await new Promise(resolve => setTimeout(resolve, 150));
+      const tasksData = this.getTasksData();
       const task: Task = {
         id: `task-${Date.now()}`,
         title: data.title,
@@ -174,42 +207,49 @@ class MockDatabaseService implements DatabaseService {
         tags: data.tags,
         metadata: data.metadata
       };
-      this.tasksData.push(task);
+      tasksData.push(task);
+      this.setTasksData(tasksData);
       return task;
     },
     
     update: async (id: string, data: UpdateTaskData) => {
       await new Promise(resolve => setTimeout(resolve, 150));
-      const index = this.tasksData.findIndex(task => task.id === id);
+      const tasksData = this.getTasksData();
+      const index = tasksData.findIndex(task => task.id === id);
       if (index === -1) throw new Error('任务不存在');
       
-      this.tasksData[index] = {
-        ...this.tasksData[index],
+      tasksData[index] = {
+        ...tasksData[index],
         ...data,
         updated_at: new Date().toISOString()
       };
-      return this.tasksData[index];
+      this.setTasksData(tasksData);
+      return tasksData[index];
     },
     
     delete: async (id: string) => {
       await new Promise(resolve => setTimeout(resolve, 100));
-      const index = this.tasksData.findIndex(task => task.id === id);
+      const tasksData = this.getTasksData();
+      const index = tasksData.findIndex(task => task.id === id);
       if (index === -1) return false;
       
-      this.tasksData.splice(index, 1);
+      tasksData.splice(index, 1);
+      this.setTasksData(tasksData);
       return true;
     },
     
     getById: async (id: string) => {
       await new Promise(resolve => setTimeout(resolve, 100));
-      return this.tasksData.find(task => task.id === id) || null;
+      const tasksData = this.getTasksData();
+      return tasksData.find(task => task.id === id) || null;
     }
   };
   
   insights = {
     filter: async (filters = {}) => {
       await new Promise(resolve => setTimeout(resolve, 100));
-      return this.insightsData.filter(insight => {
+      const insightsData = this.getInsightsData();
+      return insightsData.filter(insight => {
         if (filters.type && insight.type !== filters.type) return false;
         if (filters.user_id && insight.user_id !== filters.user_id) return false;
         return true;
@@ -218,6 +258,7 @@ class MockDatabaseService implements DatabaseService {
     
     create: async (data: CreateInsightData) => {
       await new Promise(resolve => setTimeout(resolve, 200));
+      const insightsData = this.getInsightsData();
       const insight: Insight = {
         id: `insight-${Date.now()}`,
         title: data.title,
@@ -228,20 +269,23 @@ class MockDatabaseService implements DatabaseService {
         user_id: 'mock-user-id',
         metadata: data.metadata
       };
-      this.insightsData.push(insight);
+      insightsData.push(insight);
+      this.setInsightsData(insightsData);
       return insight;
     },
     
     getById: async (id: string) => {
       await new Promise(resolve => setTimeout(resolve, 100));
-      return this.insightsData.find(insight => insight.id === id) || null;
+      const insightsData = this.getInsightsData();
+      return insightsData.find(insight => insight.id === id) || null;
     }
   };
   
   reflections = {
     filter: async (filters = {}) => {
       await new Promise(resolve => setTimeout(resolve, 100));
-      return this.reflectionsData.filter(reflection => {
+      const reflectionsData = this.getReflectionsData();
+      return reflectionsData.filter(reflection => {
         if (filters.user_id && reflection.user_id !== filters.user_id) return false;
         return true;
       });
@@ -249,6 +293,7 @@ class MockDatabaseService implements DatabaseService {
     
     create: async (data: CreateReflectionData) => {
       await new Promise(resolve => setTimeout(resolve, 150));
+      const reflectionsData = this.getReflectionsData();
       const reflection: Reflection = {
         id: `reflection-${Date.now()}`,
         content: data.content,
@@ -258,19 +303,22 @@ class MockDatabaseService implements DatabaseService {
         user_id: 'mock-user-id',
         metadata: data.metadata
       };
-      this.reflectionsData.push(reflection);
+      reflectionsData.push(reflection);
+      this.setReflectionsData(reflectionsData);
       return reflection;
     },
     
     getById: async (id: string) => {
       await new Promise(resolve => setTimeout(resolve, 100));
-      return this.reflectionsData.find(reflection => reflection.id === id) || null;
+      const reflectionsData = this.getReflectionsData();
+      return reflectionsData.find(reflection => reflection.id === id) || null;
     }
   };
   
   insightFeedback = {
     create: async (data: CreateInsightFeedbackData) => {
       await new Promise(resolve => setTimeout(resolve, 150));
+      const feedbackData = this.getFeedbackData();
       const feedback: InsightFeedback = {
         id: `feedback-${Date.now()}`,
         insight_id: data.insight_id,
@@ -279,7 +327,8 @@ class MockDatabaseService implements DatabaseService {
         created_at: new Date().toISOString(),
         user_id: 'mock-user-id'
       };
-      this.feedback.push(feedback);
+      feedbackData.push(feedback);
+      this.setFeedbackData(feedbackData);
       return feedback;
     }
   };
