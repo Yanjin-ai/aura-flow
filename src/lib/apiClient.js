@@ -3,8 +3,8 @@
  * 替换 Base44 客户端，使用平台适配层
  */
 
-import { authService, databaseService, aiService, storageService, telemetryService } from './platform/index.js';
-import { getPlatformConfig } from './platform/config.js';
+import { authService, databaseService, aiService, storageService, telemetryService } from './platform/index.ts';
+import { getPlatformConfig } from './platform/config.ts';
 
 // 初始化遥测服务
 telemetryService.init().catch(console.error);
