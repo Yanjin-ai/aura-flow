@@ -95,7 +95,8 @@ export default function DayView() {
 
       // taskData 现在包含解析后的所有信息
       const newTaskData = {
-        content: taskData.content,
+        title: taskData.content, // 将 content 映射到 title
+        content: taskData.content, // 保持向后兼容
         date: taskData.date || dateStr,
         order_index: maxOrder + 1,
         completed: false,

@@ -82,7 +82,7 @@ export default function TaskItem({ task, onToggleComplete, onUpdateTask }) {
                 : "text-slate-800"
             }`}
           >
-            {task.content}
+            {task.title || task.content}
           </p>
 
           <div className="flex items-center gap-2 mt-2 flex-wrap">
