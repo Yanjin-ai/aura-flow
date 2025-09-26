@@ -100,11 +100,16 @@ class MockAuthService implements AuthService {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     await new Promise(resolve => setTimeout(resolve, 200));
     
-    return {
+    const response = {
       user: { ...this.mockUser, email: credentials.email },
       token: 'mock-jwt-token',
       expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     };
+    
+    // 保存 token 到本地存储
+    localStorage.setItem('auth_token', response.token);
+    
+    return response;
   }
   
   async register(userData: { name: string; email: string; password: string }): Promise<AuthResponse> {
@@ -119,15 +124,22 @@ class MockAuthService implements AuthService {
       updated_at: new Date().toISOString()
     };
     
-    return {
+    const response = {
       user: newUser,
       token: 'mock-jwt-token',
       expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     };
+    
+    // 保存 token 到本地存储
+    localStorage.setItem('auth_token', response.token);
+    
+    return response;
   }
   
   async logout(): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 100));
+    // 清除本地存储的 token
+    localStorage.removeItem('auth_token');
   }
   
   async updateUser(userData: Partial<User>): Promise<User> {
@@ -137,7 +149,9 @@ class MockAuthService implements AuthService {
   }
   
   async isAuthenticated(): Promise<boolean> {
-    return true;
+    // 检查本地存储中是否有有效的 token
+    const token = localStorage.getItem('auth_token');
+    return !!token;
   }
 }
 
