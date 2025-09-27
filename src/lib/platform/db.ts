@@ -358,7 +358,14 @@ class ApiDatabaseService implements DatabaseService {
       throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
     }
     
-    return response.json();
+    const result = await response.json();
+    
+    // 如果 API 返回的是包装格式 { success: true, data: ... }，则提取 data
+    if (result && typeof result === 'object' && 'success' in result && 'data' in result) {
+      return result.data;
+    }
+    
+    return result;
   }
   
   tasks = {

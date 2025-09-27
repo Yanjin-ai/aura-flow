@@ -205,7 +205,14 @@ class ApiAuthService implements AuthService {
       throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
     }
     
-    return response.json();
+    const result = await response.json();
+    
+    // 如果 API 返回的是包装格式 { success: true, data: ... }，则提取 data
+    if (result && typeof result === 'object' && 'success' in result && 'data' in result) {
+      return result.data;
+    }
+    
+    return result;
   }
   
   async me(): Promise<User> {
@@ -213,10 +220,19 @@ class ApiAuthService implements AuthService {
   }
   
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await this.request<AuthResponse>('/auth/login', {
+    const result = await this.request<any>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials)
     });
+    
+    // 认证 API 返回 { success: true, user: ..., token: ..., expires_at: ... }
+    const response = result && typeof result === 'object' && 'success' in result && 'user' in result
+      ? {
+          user: result.user,
+          token: result.token,
+          expires_at: result.expires_at
+        }
+      : result;
     
     // 保存 token
     localStorage.setItem('auth_token', response.token);
@@ -225,10 +241,19 @@ class ApiAuthService implements AuthService {
   }
   
   async register(userData: { name: string; email: string; password: string }): Promise<AuthResponse> {
-    const response = await this.request<AuthResponse>('/auth/register', {
+    const result = await this.request<any>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData)
     });
+    
+    // 认证 API 返回 { success: true, user: ..., message: ... }
+    const response = result && typeof result === 'object' && 'success' in result && 'user' in result
+      ? {
+          user: result.user,
+          token: 'temp-token', // 注册时可能没有 token
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24小时后过期
+        }
+      : result;
     
     // 保存 token
     localStorage.setItem('auth_token', response.token);
