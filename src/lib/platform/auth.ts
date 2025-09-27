@@ -216,11 +216,11 @@ class ApiAuthService implements AuthService {
   }
   
   async me(): Promise<User> {
-    return this.request<User>('/auth/me');
+    return this.request<User>('/auth/me-simple');
   }
   
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const result = await this.request<any>('/auth/login', {
+    const result = await this.request<any>('/auth/login-simple', {
       method: 'POST',
       body: JSON.stringify(credentials)
     });
@@ -241,17 +241,17 @@ class ApiAuthService implements AuthService {
   }
   
   async register(userData: { name: string; email: string; password: string }): Promise<AuthResponse> {
-    const result = await this.request<any>('/auth/register', {
+    const result = await this.request<any>('/auth/register-simple', {
       method: 'POST',
       body: JSON.stringify(userData)
     });
     
-    // 认证 API 返回 { success: true, user: ..., message: ... }
+    // 认证 API 返回 { success: true, user: ..., token: ..., expires_at: ... }
     const response = result && typeof result === 'object' && 'success' in result && 'user' in result
       ? {
           user: result.user,
-          token: 'temp-token', // 注册时可能没有 token
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24小时后过期
+          token: result.token,
+          expires_at: result.expires_at
         }
       : result;
     

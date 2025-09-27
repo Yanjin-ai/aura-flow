@@ -27,12 +27,10 @@ UPDATE tasks SET status = CASE
 END;
 
 -- 更新现有记录的 priority 字段
-UPDATE tasks SET priority = CASE 
-  WHEN priority::integer = 1 THEN 'high'
-  WHEN priority::integer = 2 THEN 'medium'
-  WHEN priority::integer = 3 THEN 'low'
-  ELSE 'medium'
-END;
+-- 先删除旧的 priority 列，然后重新添加为 VARCHAR 类型
+ALTER TABLE tasks DROP COLUMN IF EXISTS priority;
+ALTER TABLE tasks ADD COLUMN priority VARCHAR(20) DEFAULT 'medium';
+UPDATE tasks SET priority = 'medium';
 
 -- 更新现有记录的 ai_category 字段
 UPDATE tasks SET ai_category = category WHERE category IS NOT NULL;
