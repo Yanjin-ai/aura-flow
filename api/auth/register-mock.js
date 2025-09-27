@@ -17,10 +17,12 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('注册请求体:', req.body);
     const { email, password, name } = req.body
 
     // 验证输入
     if (!email || !password || !name) {
+      console.log('验证失败:', { email: !!email, password: !!password, name: !!name });
       return res.status(400).json({ error: '邮箱、密码和姓名都是必填项' })
     }
 
