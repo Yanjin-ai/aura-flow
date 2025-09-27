@@ -56,11 +56,12 @@ export default async function handler(req, res) {
     }
 
     // 生成简单的 token（不依赖 jsonwebtoken）
-    const token = Buffer.from(JSON.stringify({
+    const tokenData = {
       user_id: newUser.id,
       email: newUser.email,
       exp: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7天后过期
-    })).toString('base64')
+    }
+    const token = btoa(JSON.stringify(tokenData))
 
     // 返回成功响应
     res.status(201).json({
