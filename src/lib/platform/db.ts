@@ -130,13 +130,13 @@ export interface DatabaseService {
 export function createDatabaseService(): DatabaseService {
   const config = getPlatformConfig();
   
-  // 根据配置选择实现方式
-  // 只要选择了 mock 提供商，则无论环境直接使用 MockDatabaseService，避免误连真实后端
-  if (config.ai_provider === 'mock') {
-    return new MockDatabaseService();
+  // 如果有 Supabase 配置，使用真实 API
+  if (config.environment === 'production' && import.meta.env.VITE_SUPABASE_URL) {
+    return new ApiDatabaseService(config);
   }
   
-  return new ApiDatabaseService(config);
+  // 否则使用 Mock 服务
+  return new MockDatabaseService();
 }
 
 /**
@@ -341,7 +341,8 @@ class ApiDatabaseService implements DatabaseService {
   constructor(private config: any) {}
   
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.config.api_base_url}${endpoint}`;
+    // 使用相对路径，指向 Vercel API 路由
+    const url = `/api${endpoint}`;
     const token = localStorage.getItem('auth_token');
     
     const response = await fetch(url, {

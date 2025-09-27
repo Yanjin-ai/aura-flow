@@ -62,13 +62,13 @@ export interface AuthService {
 export function createAuthService(): AuthService {
   const config = getPlatformConfig();
   
-  // 根据配置选择实现方式
-  // 只要选择了 mock 提供商，则无论环境直接使用 MockAuthService，避免误连真实后端
-  if (config.ai_provider === 'mock') {
-    return new MockAuthService();
+  // 如果有 Supabase 配置，使用真实 API
+  if (config.environment === 'production' && import.meta.env.VITE_SUPABASE_URL) {
+    return new ApiAuthService(config);
   }
   
-  return new ApiAuthService(config);
+  // 否则使用 Mock 服务
+  return new MockAuthService();
 }
 
 /**
@@ -188,7 +188,8 @@ class ApiAuthService implements AuthService {
   constructor(private config: any) {}
   
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.config.api_base_url}${endpoint}`;
+    // 使用相对路径，指向 Vercel API 路由
+    const url = `/api${endpoint}`;
     const token = localStorage.getItem('auth_token');
     
     const response = await fetch(url, {
