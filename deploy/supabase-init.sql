@@ -26,11 +26,20 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS tasks (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  content TEXT NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT,
+  description TEXT,
+  status VARCHAR(50) DEFAULT 'pending',
+  priority VARCHAR(20) DEFAULT 'medium',
+  due_date DATE,
+  due_time TIME,
+  date DATE,
+  order_index INTEGER DEFAULT 0,
   completed BOOLEAN DEFAULT FALSE,
-  priority INTEGER DEFAULT 0,
+  ai_category VARCHAR(100),
   category VARCHAR(100),
-  due_date TIMESTAMP WITH TIME ZONE,
+  tags JSONB,
+  metadata JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

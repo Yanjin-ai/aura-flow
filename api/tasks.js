@@ -51,9 +51,25 @@ export default async function handler(req, res) {
 
     } else if (req.method === 'POST') {
       // 创建新任务
-      const { title, description, status, priority, due_date, tags, metadata } = req.body
+      const { 
+        title, 
+        content, 
+        description, 
+        status, 
+        priority, 
+        due_date, 
+        due_time,
+        date,
+        order_index,
+        completed,
+        ai_category,
+        tags, 
+        metadata 
+      } = req.body
 
-      if (!title) {
+      // 支持多种标题字段
+      const taskTitle = title || content
+      if (!taskTitle) {
         return res.status(400).json({ error: '任务标题是必填项' })
       }
 
@@ -61,11 +77,16 @@ export default async function handler(req, res) {
         .from('tasks')
         .insert({
           user_id: user.id,
-          title: title,
+          title: taskTitle,
+          content: content || taskTitle, // 保持向后兼容
           description: description || null,
-          status: status || 'pending',
+          status: status || (completed ? 'completed' : 'pending'),
           priority: priority || 'medium',
-          due_date: due_date || null,
+          due_date: due_date || date || null,
+          due_time: due_time || null,
+          order_index: order_index || 0,
+          completed: completed || false,
+          ai_category: ai_category || null,
           tags: tags || null,
           metadata: metadata || null,
           created_at: new Date().toISOString(),
