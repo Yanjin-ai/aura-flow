@@ -216,11 +216,11 @@ class ApiAuthService implements AuthService {
   }
   
   async me(): Promise<User> {
-    return this.request<User>('/auth/me-mock');
+    return this.request<User>('/auth/me-simple-test');
   }
   
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const result = await this.request<any>('/auth/login-mock', {
+    const result = await this.request<any>('/auth/login-simple-test', {
       method: 'POST',
       body: JSON.stringify(credentials)
     });
@@ -242,7 +242,7 @@ class ApiAuthService implements AuthService {
   
   async register(userData: { name: string; email: string; password: string }): Promise<AuthResponse> {
     console.log('注册请求数据:', userData);
-    const result = await this.request<any>('/auth/register-debug', {
+    const result = await this.request<any>('/auth/register-simple-test', {
       method: 'POST',
       body: JSON.stringify(userData)
     });
