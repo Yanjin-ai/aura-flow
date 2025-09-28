@@ -61,7 +61,7 @@ export default async function handler(req, res) {
       email: newUser.email,
       exp: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7天后过期
     }
-    const token = btoa(JSON.stringify(tokenData))
+    const token = Buffer.from(JSON.stringify(tokenData)).toString('base64')
 
     // 返回成功响应
     res.status(201).json({

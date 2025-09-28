@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     // 解析简单的 token（不依赖 jsonwebtoken）
     let decoded
     try {
-      const tokenData = JSON.parse(atob(token))
+      const tokenData = JSON.parse(Buffer.from(token, 'base64').toString())
       decoded = tokenData
     } catch (error) {
       return res.status(401).json({ error: '无效的认证令牌' })
