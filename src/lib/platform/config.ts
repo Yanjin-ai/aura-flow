@@ -45,14 +45,9 @@ export function getPlatformConfig(): PlatformConfig {
     environment: (import.meta.env.MODE as PlatformConfig['environment']) || 'development'
   };
   
-  // 在 Vercel 部署环境中，如果有 Supabase 配置则使用真实 API
-  if (import.meta.env.MODE === 'production' && import.meta.env.VITE_SUPABASE_URL) {
-    config.environment = 'production';
-    config.ai_provider = 'openai'; // 或者你选择的其他 AI 提供商
-  } else if (import.meta.env.MODE === 'production' && !import.meta.env.VITE_API_BASE_URL) {
-    config.environment = 'development';
-    config.ai_provider = 'mock';
-  }
+  // 强制使用 mock 模式，避免部署问题
+  config.environment = 'development';
+  config.ai_provider = 'mock';
   
   return config;
 }

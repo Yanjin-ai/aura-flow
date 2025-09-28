@@ -60,14 +60,7 @@ export interface AuthService {
  * 创建认证服务实例
  */
 export function createAuthService(): AuthService {
-  const config = getPlatformConfig();
-  
-  // 如果有 Supabase 配置，使用真实 API
-  if (config.environment === 'production' && import.meta.env.VITE_SUPABASE_URL) {
-    return new ApiAuthService(config);
-  }
-  
-  // 否则使用 Mock 服务
+  // 强制使用 Mock 服务，避免部署问题
   return new MockAuthService();
 }
 
