@@ -1,5 +1,19 @@
-// 简化的用户登录 API - 暂时不使用数据库
+// 完整的用户登录 API - 使用 Supabase
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://lpelllegamiqdwtgqmsy.supabase.co'
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwZWxsbGVnYW1pcWR3dGdxbXN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MDE4MDgsImV4cCI6MjA3NDM3NzgwOH0.IGt6WyLt4WPXQ7lN4ofCb389yTKUXY4kEDmWK7Sx4as'
+
 export default async function handler(req, res) {
+  // 设置 CORS 头
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -11,13 +25,28 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '邮箱和密码都是必填项' });
     }
 
-    // 简单的用户验证（暂时不使用数据库）
-    const user = {
-      id: 'user_' + Date.now(),
-      email: email,
-      name: '用户',
-      created_at: new Date().toISOString()
-    };
+    // 创建 Supabase 客户端
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // 查找用户
+    const { data: user, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    if (fetchError) {
+      if (fetchError.code === 'PGRST116') {
+        return res.status(401).json({ error: '用户不存在' });
+      }
+      console.error('查找用户错误:', fetchError);
+      return res.status(500).json({ error: '数据库查询失败' });
+    }
+
+    // 验证密码（实际应用中应该使用加密比较）
+    if (user.password_hash !== password) {
+      return res.status(401).json({ error: '密码错误' });
+    }
 
     // 生成简单的 token
     const token = Buffer.from(JSON.stringify({
@@ -28,7 +57,11 @@ export default async function handler(req, res) {
 
     res.status(200).json({
       success: true,
-      user: user,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name
+      },
       token: token,
       message: '登录成功'
     });
