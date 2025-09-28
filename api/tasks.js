@@ -1,10 +1,4 @@
-// 改进的任务管理 API - 添加数据持久化
-import { createClient } from '@supabase/supabase-js'
-
-// 初始化 Supabase 客户端
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://lpelllegamiqdwtgqmsy.supabase.co'
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwZWxsbGVnYW1pcWR3dGdxbXN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MDE4MDgsImV4cCI6MjA3NDM3NzgwOH0.IGt6WyLt4WPXQ7lN4ofCb389yTKUXY4kEDmWK7Sx4as'
-const supabase = createClient(supabaseUrl, supabaseKey)
+// 简化的任务管理 API - 暂时不使用数据库
 
 export default async function handler(req, res) {
   // 获取认证信息
@@ -24,22 +18,11 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
-    // 获取任务列表
+    // 获取任务列表（暂时返回空数组）
     try {
-      const { data: tasks, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('user_id', user_id)
-        .order('order_index', { ascending: true });
-
-      if (error) {
-        console.error('获取任务错误:', error);
-        return res.status(500).json({ error: '数据库查询失败' });
-      }
-
       res.status(200).json({
         success: true,
-        data: tasks || []
+        data: []
       });
     } catch (error) {
       console.error('获取任务错误:', error);
@@ -54,25 +37,19 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: '任务标题是必填项' });
       }
 
-      const { data: task, error } = await supabase
-        .from('tasks')
-        .insert({
-          user_id: user_id,
-          title: title || content,
-          content: content || title,
-          date: date || new Date().toISOString().split('T')[0],
-          order_index: order_index || 0,
-          completed: completed || false,
-          ai_category: ai_category || null,
-          due_time: due_time || null
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('创建任务错误:', error);
-        return res.status(500).json({ error: '数据库插入失败' });
-      }
+      const task = {
+        id: 'task_' + Date.now(),
+        user_id: user_id,
+        title: title || content,
+        content: content || title,
+        date: date || new Date().toISOString().split('T')[0],
+        order_index: order_index || 0,
+        completed: completed || false,
+        ai_category: ai_category || null,
+        due_time: due_time || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
 
       res.status(201).json({
         success: true,
@@ -80,67 +57,6 @@ export default async function handler(req, res) {
       });
     } catch (error) {
       console.error('创建任务错误:', error);
-      res.status(500).json({ error: '服务器内部错误' });
-    }
-  } else if (req.method === 'PUT') {
-    // 更新任务
-    try {
-      const { id, ...updateData } = req.body;
-
-      if (!id) {
-        return res.status(400).json({ error: '任务ID是必填项' });
-      }
-
-      const { data: task, error } = await supabase
-        .from('tasks')
-        .update({
-          ...updateData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .eq('user_id', user_id) // 确保只能更新自己的任务
-        .select()
-        .single();
-
-      if (error) {
-        console.error('更新任务错误:', error);
-        return res.status(500).json({ error: '数据库更新失败' });
-      }
-
-      res.status(200).json({
-        success: true,
-        data: task
-      });
-    } catch (error) {
-      console.error('更新任务错误:', error);
-      res.status(500).json({ error: '服务器内部错误' });
-    }
-  } else if (req.method === 'DELETE') {
-    // 删除任务
-    try {
-      const { id } = req.body;
-
-      if (!id) {
-        return res.status(400).json({ error: '任务ID是必填项' });
-      }
-
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user_id); // 确保只能删除自己的任务
-
-      if (error) {
-        console.error('删除任务错误:', error);
-        return res.status(500).json({ error: '数据库删除失败' });
-      }
-
-      res.status(200).json({
-        success: true,
-        message: '任务删除成功'
-      });
-    } catch (error) {
-      console.error('删除任务错误:', error);
       res.status(500).json({ error: '服务器内部错误' });
     }
   } else {

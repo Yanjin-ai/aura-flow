@@ -1,10 +1,4 @@
-// 改进的用户注册 API - 使用 Supabase
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://lpelllegamiqdwtgqmsy.supabase.co'
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwZWxsbGVnYW1pcWR3dGdxbXN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MDE4MDgsImV4cCI6MjA3NDM3NzgwOH0.IGt6WyLt4WPXQ7lN4ofCb389yTKUXY4kEDmWK7Sx4as'
-const supabase = createClient(supabaseUrl, supabaseKey)
-
+// 简化的用户注册 API - 暂时不使用数据库
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -17,54 +11,24 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '邮箱、密码和姓名都是必填项' });
     }
 
-    // 检查用户是否已存在
-    const { data: existingUser, error: fetchError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .single();
-
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error('检查用户存在性错误:', fetchError);
-      return res.status(500).json({ error: '数据库查询失败' });
-    }
-
-    if (existingUser) {
-      return res.status(409).json({ error: '该邮箱已被注册' });
-    }
-
-    // 创建新用户
-    const { data: newUser, error: insertError } = await supabase
-      .from('users')
-      .insert({
-        email: email,
-        name: name,
-        password_hash: password, // 实际应用中应该加密
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('创建用户错误:', insertError);
-      return res.status(500).json({ error: insertError.message });
-    }
+    // 简单的用户创建（暂时不使用数据库）
+    const user = {
+      id: 'user_' + Date.now(),
+      email: email,
+      name: name,
+      created_at: new Date().toISOString()
+    };
 
     // 生成简单的 token
     const token = Buffer.from(JSON.stringify({
-      user_id: newUser.id,
-      email: newUser.email,
+      user_id: user.id,
+      email: user.email,
       exp: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7天过期
     })).toString('base64');
 
     res.status(201).json({
       success: true,
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        name: newUser.name
-      },
+      user: user,
       token: token,
       message: '注册成功'
     });
