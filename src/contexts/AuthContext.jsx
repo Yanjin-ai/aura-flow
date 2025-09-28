@@ -64,14 +64,17 @@ export const AuthProvider = ({ children }) => {
 
   // 用户注册
   const register = async (userData) => {
+    console.log('AuthContext: 开始注册', userData);
     try {
       setIsLoading(true);
+      console.log('AuthContext: 调用 authService.register');
       const response = await authService.register(userData);
+      console.log('AuthContext: 注册响应', response);
       setUser(response.user);
       setIsAuthenticated(true);
       return { success: true, user: response.user };
     } catch (error) {
-      console.error('注册失败:', error);
+      console.error('AuthContext: 注册失败:', error);
       return { success: false, error: error.message };
     } finally {
       setIsLoading(false);
