@@ -242,7 +242,7 @@ class ApiAuthService implements AuthService {
   
   async register(userData: { name: string; email: string; password: string }): Promise<AuthResponse> {
     console.log('注册请求数据:', userData);
-    const result = await this.request<any>('/auth/register-simple', {
+    const result = await this.request<any>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData)
     });
