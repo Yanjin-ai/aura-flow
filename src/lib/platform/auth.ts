@@ -60,7 +60,14 @@ export interface AuthService {
  * 创建认证服务实例
  */
 export function createAuthService(): AuthService {
-  // 强制使用 Mock 服务，避免部署问题
+  const config = getPlatformConfig();
+  
+  // 在生产环境中使用真实 API
+  if (config.environment === 'production') {
+    return new ApiAuthService(config);
+  }
+  
+  // 开发环境使用 Mock 服务
   return new MockAuthService();
 }
 
@@ -209,11 +216,11 @@ class ApiAuthService implements AuthService {
   }
   
   async me(): Promise<User> {
-    return this.request<User>('/auth/me-simple-test');
+    return this.request<User>('/auth/me');
   }
   
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const result = await this.request<any>('/auth/login-simple-test', {
+    const result = await this.request<any>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials)
     });
@@ -235,7 +242,7 @@ class ApiAuthService implements AuthService {
   
   async register(userData: { name: string; email: string; password: string }): Promise<AuthResponse> {
     console.log('注册请求数据:', userData);
-    const result = await this.request<any>('/auth/register-simple-test', {
+    const result = await this.request<any>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData)
     });

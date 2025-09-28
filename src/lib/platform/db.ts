@@ -128,7 +128,14 @@ export interface DatabaseService {
  * 创建数据库服务实例
  */
 export function createDatabaseService(): DatabaseService {
-  // 强制使用 Mock 服务，避免部署问题
+  const config = getPlatformConfig();
+  
+  // 在生产环境中使用真实 API
+  if (config.environment === 'production') {
+    return new ApiDatabaseService(config);
+  }
+  
+  // 开发环境使用 Mock 服务
   return new MockDatabaseService();
 }
 

@@ -45,9 +45,11 @@ export function getPlatformConfig(): PlatformConfig {
     environment: (import.meta.env.MODE as PlatformConfig['environment']) || 'development'
   };
   
-  // 强制使用 mock 模式，避免部署问题
-  config.environment = 'development';
-  config.ai_provider = 'mock';
+  // 在生产环境中使用真实 API
+  if (import.meta.env.MODE === 'production') {
+    config.environment = 'production';
+    config.ai_provider = 'mock'; // 暂时使用 mock AI
+  }
   
   return config;
 }
