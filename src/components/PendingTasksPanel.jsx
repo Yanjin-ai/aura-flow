@@ -224,11 +224,23 @@ export default function PendingTasksPanel({ currentDate, onTasksRolledOver }) {
                           <span className="flex-1 text-sm text-slate-700">
                             {task.content}
                           </span>
-                          {task.ai_category && (
-                            <Badge variant="outline" className="text-xs">
-                              {task.ai_category}
-                            </Badge>
-                          )}
+                          <div className="flex items-center gap-1">
+                            {/* 显示任务标签 */}
+                            {task.tags && task.tags.length > 0 && (
+                              <>
+                                {task.tags.map((tag, index) => (
+                                  <Badge key={index} variant="outline" className="text-xs bg-blue-50 text-blue-600 border-blue-200">
+                                    #{tag}
+                                  </Badge>
+                                ))}
+                              </>
+                            )}
+                            {task.ai_category && (
+                              <Badge variant="outline" className="text-xs">
+                                {task.ai_category}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

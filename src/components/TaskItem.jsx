@@ -25,6 +25,29 @@ export default function TaskItem({ task, onToggleComplete, onUpdateTask }) {
     "Other": "bg-gray-100 text-gray-700"
   };
 
+  // 标签颜色映射函数
+  const getTagColor = (tag) => {
+    const tagColors = {
+      "重要": "bg-red-100 text-red-700",
+      "紧急": "bg-orange-100 text-orange-700",
+      "工作": "bg-blue-100 text-blue-700",
+      "学习": "bg-purple-100 text-purple-700",
+      "生活": "bg-green-100 text-green-700",
+      "健康": "bg-pink-100 text-pink-700",
+      "娱乐": "bg-yellow-100 text-yellow-700",
+      "购物": "bg-indigo-100 text-indigo-700",
+      "运动": "bg-emerald-100 text-emerald-700",
+      "阅读": "bg-amber-100 text-amber-700",
+      "旅行": "bg-cyan-100 text-cyan-700",
+      "家庭": "bg-rose-100 text-rose-700",
+      "朋友": "bg-violet-100 text-violet-700",
+      "项目": "bg-slate-100 text-slate-700",
+      "会议": "bg-teal-100 text-teal-700"
+    };
+    
+    return tagColors[tag] || "bg-gray-100 text-gray-700";
+  };
+
   const isLowConfidence = AI_ENABLED && AI_CLASSIFY_ENABLED && task.ai_category && (task.ai_confidence ?? 1) < LOW_CONFIDENCE_THRESHOLD;
 
   const handleReclassify = async () => {
@@ -86,6 +109,20 @@ export default function TaskItem({ task, onToggleComplete, onUpdateTask }) {
           </p>
 
           <div className="flex items-center gap-2 mt-2 flex-wrap">
+            {/* 显示任务标签 */}
+            {task.tags && task.tags.length > 0 && (
+              <>
+                {task.tags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium ${getTagColor(tag)}`}
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </>
+            )}
+
             {task.ai_category && (
               <span
                 className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
