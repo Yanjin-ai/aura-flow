@@ -1,8 +1,11 @@
 // 完整的用户信息 API - 使用 Supabase
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://lpelllegamiqdwtgqmsy.supabase.co'
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwZWxsbGVnYW1pcWR3dGdxbXN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MDE4MDgsImV4cCI6MjA3NDM3NzgwOH0.IGt6WyLt4WPXQ7lN4ofCb389yTKUXY4kEDmWK7Sx4as'
+const supabaseUrl = process.env.VITE_SUPABASE_URL
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
+
+// 创建 Supabase 客户端
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 export default async function handler(req, res) {
   // 设置 CORS 头
@@ -35,9 +38,6 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: '认证令牌已过期' });
     }
 
-    // 创建 Supabase 客户端
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     // 从数据库获取用户信息
     const { data: user, error } = await supabase
       .from('users')
@@ -55,14 +55,14 @@ export default async function handler(req, res) {
       id: user.id,
       email: user.email,
       name: user.name,
-      has_seen_welcome_guide: true,
-      language: 'zh-CN',
-      auto_rollover_enabled: true,
-      auto_rollover_days: 3,
-      rollover_notification_enabled: true,
-      ai_daily_insights: true,
-      ai_weekly_insights: true,
-      ai_url_extraction: true,
+      has_seen_welcome_guide: user.has_seen_welcome_guide,
+      language: user.language,
+      auto_rollover_enabled: user.auto_rollover_enabled,
+      auto_rollover_days: user.auto_rollover_days,
+      rollover_notification_enabled: user.rollover_notification_enabled,
+      ai_daily_insights: user.ai_daily_insights,
+      ai_weekly_insights: user.ai_weekly_insights,
+      ai_url_extraction: user.ai_url_extraction,
       created_at: user.created_at,
       updated_at: user.updated_at
     };

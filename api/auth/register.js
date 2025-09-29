@@ -1,8 +1,12 @@
 // 完整的用户注册 API - 使用 Supabase
 import { createClient } from '@supabase/supabase-js'
+import bcrypt from 'bcryptjs'
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://lpelllegamiqdwtgqmsy.supabase.co'
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwZWxsbGVnYW1pcWR3dGdxbXN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MDE4MDgsImV4cCI6MjA3NDM3NzgwOH0.IGt6WyLt4WPXQ7lN4ofCb389yTKUXY4kEDmWK7Sx4as'
+const supabaseUrl = process.env.VITE_SUPABASE_URL
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
+
+// 创建 Supabase 客户端
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 export default async function handler(req, res) {
   // 设置 CORS 头
@@ -25,16 +29,46 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '邮箱、密码和姓名都是必填项' });
     }
 
-    // 暂时不使用数据库，直接创建用户对象
-    const newUser = {
-      id: 'user_' + Date.now(),
-      email: email,
-      name: name,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
+    // 检查用户是否已存在
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .single();
 
-    // 生成简单的 token
+    if (existingUser) {
+      return res.status(400).json({ error: '该邮箱已被注册' });
+    }
+
+    // 加密密码
+    const saltRounds = 10;
+    const password_hash = await bcrypt.hash(password, saltRounds);
+
+    // 创建新用户
+    const { data: newUser, error: insertError } = await supabase
+      .from('users')
+      .insert({
+        email: email,
+        name: name,
+        password_hash: password_hash,
+        language: 'zh-CN',
+        has_seen_welcome_guide: false,
+        auto_rollover_enabled: true,
+        auto_rollover_days: 7,
+        rollover_notification_enabled: true,
+        ai_daily_insights: true,
+        ai_weekly_insights: true,
+        ai_url_extraction: true
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('数据库插入错误:', insertError);
+      return res.status(500).json({ error: '注册失败，请稍后重试' });
+    }
+
+    // 生成 JWT token
     const token = Buffer.from(JSON.stringify({
       user_id: newUser.id,
       email: newUser.email,
@@ -46,7 +80,15 @@ export default async function handler(req, res) {
       user: {
         id: newUser.id,
         email: newUser.email,
-        name: newUser.name
+        name: newUser.name,
+        language: newUser.language,
+        has_seen_welcome_guide: newUser.has_seen_welcome_guide,
+        auto_rollover_enabled: newUser.auto_rollover_enabled,
+        auto_rollover_days: newUser.auto_rollover_days,
+        rollover_notification_enabled: newUser.rollover_notification_enabled,
+        ai_daily_insights: newUser.ai_daily_insights,
+        ai_weekly_insights: newUser.ai_weekly_insights,
+        ai_url_extraction: newUser.ai_url_extraction
       },
       token: token,
       message: '注册成功'

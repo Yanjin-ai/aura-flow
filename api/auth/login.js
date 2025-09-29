@@ -1,8 +1,12 @@
 // 完整的用户登录 API - 使用 Supabase
 import { createClient } from '@supabase/supabase-js'
+import bcrypt from 'bcryptjs'
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://lpelllegamiqdwtgqmsy.supabase.co'
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwZWxsbGVnYW1pcWR3dGdxbXN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MDE4MDgsImV4cCI6MjA3NDM3NzgwOH0.IGt6WyLt4WPXQ7lN4ofCb389yTKUXY4kEDmWK7Sx4as'
+const supabaseUrl = process.env.VITE_SUPABASE_URL
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
+
+// 创建 Supabase 客户端
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 export default async function handler(req, res) {
   // 设置 CORS 头
@@ -25,9 +29,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '邮箱和密码都是必填项' });
     }
 
-    // 创建 Supabase 客户端
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     // 查找用户
     const { data: user, error: fetchError } = await supabase
       .from('users')
@@ -43,8 +44,9 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: '数据库查询失败' });
     }
 
-    // 验证密码（实际应用中应该使用加密比较）
-    if (user.password_hash !== password) {
+    // 验证密码
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    if (!isPasswordValid) {
       return res.status(401).json({ error: '密码错误' });
     }
 

@@ -219,21 +219,28 @@ class ApiAuthService implements AuthService {
   }
   
   async me(): Promise<User> {
-    return this.request<User>('/auth/me-simple');
+    const result = await this.request<any>('/auth/me');
+    
+    // API 返回 { success: true, user: ... }
+    if (result && typeof result === 'object' && 'success' in result && 'user' in result) {
+      return result.user;
+    }
+    
+    return result;
   }
   
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const result = await this.request<any>('/auth/login-simple', {
+    const result = await this.request<any>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials)
     });
     
-    // 认证 API 返回 { success: true, user: ..., token: ..., expires_at: ... }
+    // 认证 API 返回 { success: true, user: ..., token: ... }
     const response = result && typeof result === 'object' && 'success' in result && 'user' in result
       ? {
           user: result.user,
           token: result.token,
-          expires_at: result.expires_at
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
         }
       : result;
     
@@ -244,18 +251,17 @@ class ApiAuthService implements AuthService {
   }
   
   async register(userData: { name: string; email: string; password: string }): Promise<AuthResponse> {
-    console.log('注册请求数据:', userData);
-    const result = await this.request<any>('/auth/register-test', {
+    const result = await this.request<any>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData)
     });
     
-    // 认证 API 返回 { success: true, user: ..., token: ..., expires_at: ... }
+    // 认证 API 返回 { success: true, user: ..., token: ... }
     const response = result && typeof result === 'object' && 'success' in result && 'user' in result
       ? {
           user: result.user,
           token: result.token,
-          expires_at: result.expires_at
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
         }
       : result;
     
@@ -265,17 +271,24 @@ class ApiAuthService implements AuthService {
     return response;
   }
   
-  async logout(): Promise<void> {
-    await this.request('/auth/logout', { method: 'POST' });
-    localStorage.removeItem('auth_token');
-  }
-  
   async updateUser(userData: Partial<User>): Promise<User> {
-    return this.request<User>('/auth/me', {
+    const result = await this.request<any>('/auth/update', {
       method: 'PATCH',
       body: JSON.stringify(userData)
     });
+    
+    // API 返回 { success: true, user: ... }
+    if (result && typeof result === 'object' && 'success' in result && 'user' in result) {
+      return result.user;
+    }
+    
+    return result;
   }
+  
+  async logout(): Promise<void> {
+    localStorage.removeItem('auth_token');
+  }
+  
   
   async isAuthenticated(): Promise<boolean> {
     try {
