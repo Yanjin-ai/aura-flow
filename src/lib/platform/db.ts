@@ -368,7 +368,12 @@ class ApiDatabaseService implements DatabaseService {
   private baseUrl: string;
   
   constructor(private config: any) {
-    this.baseUrl = config.api_base_url || '';
+    // 在生产环境中，强制使用相对路径调用我们的 Vercel API
+    if (config.environment === 'production') {
+      this.baseUrl = ''; // 使用相对路径
+    } else {
+      this.baseUrl = config.api_base_url || '';
+    }
   }
   
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
