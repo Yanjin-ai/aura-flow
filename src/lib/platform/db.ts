@@ -148,7 +148,12 @@ export interface DatabaseService {
 export function createDatabaseService(): DatabaseService {
   const config = getPlatformConfig();
   
-  // 暂时强制使用 Mock 服务，避免 API 问题
+  // 在生产环境中使用真实 API
+  if (config.environment === 'production' && import.meta.env.VITE_SUPABASE_URL) {
+    return new ApiDatabaseService(config);
+  }
+  
+  // 开发环境使用 Mock 服务
   return new MockDatabaseService();
 }
 
@@ -358,67 +363,150 @@ class MockDatabaseService implements DatabaseService {
  * API 数据库服务（生产环境使用）
  */
 class ApiDatabaseService implements DatabaseService {
-  constructor(private config: any) {}
+  private supabase: any;
   
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    // 使用相对路径，指向 Vercel API 路由
-    const url = `/api${endpoint}`;
-    const token = localStorage.getItem('auth_token');
-    
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-        ...options.headers
+  constructor(private config: any) {
+    // 动态导入 Supabase 客户端
+    this.initSupabase();
+  }
+  
+  private async initSupabase() {
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (supabaseUrl && supabaseKey) {
+        this.supabase = createClient(supabaseUrl, supabaseKey);
+      } else {
+        throw new Error('Supabase 配置缺失');
       }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
+    } catch (error) {
+      console.error('Supabase 初始化失败:', error);
+      throw error;
+    }
+  }
+  
+  private async getCurrentUserId(): Promise<string> {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      throw new Error('未找到认证令牌');
     }
     
-    const result = await response.json();
-    
-    // 如果 API 返回的是包装格式 { success: true, data: ... }，则提取 data
-    if (result && typeof result === 'object' && 'success' in result && 'data' in result) {
-      return result.data;
+    try {
+      const tokenData = JSON.parse(atob(token));
+      return tokenData.user_id;
+    } catch (error) {
+      throw new Error('无效的认证令牌');
     }
-    
-    return result;
   }
   
   tasks = {
     filter: async (filters = {}) => {
-      const params = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) params.append(key, value);
-      });
+      if (!this.supabase) {
+        throw new Error('Supabase 未初始化');
+      }
       
-      return this.request<Task[]>(`/tasks?${params.toString()}`);
+      const userId = await this.getCurrentUserId();
+      let query = this.supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', userId);
+      
+      // 应用过滤器
+      if (filters.date) {
+        query = query.eq('date', filters.date);
+      }
+      if (filters.status) {
+        query = query.eq('status', filters.status);
+      }
+      if (filters.completed !== undefined) {
+        query = query.eq('completed', filters.completed);
+      }
+      
+      const { data, error } = await query.order('order_index', { ascending: true });
+      
+      if (error) throw error;
+      return data || [];
     },
     
     create: async (data: CreateTaskData) => {
-      return this.request<Task>('/tasks', {
-        method: 'POST',
-        body: JSON.stringify(data)
-      });
+      if (!this.supabase) {
+        throw new Error('Supabase 未初始化');
+      }
+      
+      const userId = await this.getCurrentUserId();
+      const taskData = {
+        ...data,
+        user_id: userId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      const { data: result, error } = await this.supabase
+        .from('tasks')
+        .insert(taskData)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return result;
     },
     
     update: async (id: string, data: UpdateTaskData) => {
-      return this.request<Task>(`/tasks/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data)
-      });
+      if (!this.supabase) {
+        throw new Error('Supabase 未初始化');
+      }
+      
+      const userId = await this.getCurrentUserId();
+      const updateData = {
+        ...data,
+        updated_at: new Date().toISOString()
+      };
+      
+      const { data: result, error } = await this.supabase
+        .from('tasks')
+        .update(updateData)
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return result;
     },
     
     delete: async (id: string) => {
-      await this.request(`/tasks/${id}`, { method: 'DELETE' });
+      if (!this.supabase) {
+        throw new Error('Supabase 未初始化');
+      }
+      
+      const userId = await this.getCurrentUserId();
+      const { error } = await this.supabase
+        .from('tasks')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
+      
+      if (error) throw error;
       return true;
     },
     
     getById: async (id: string) => {
-      return this.request<Task | null>(`/tasks/${id}`);
+      if (!this.supabase) {
+        throw new Error('Supabase 未初始化');
+      }
+      
+      const userId = await this.getCurrentUserId();
+      const { data, error } = await this.supabase
+        .from('tasks')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', userId)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
     }
   };
   
