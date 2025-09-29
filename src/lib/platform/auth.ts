@@ -62,12 +62,7 @@ export interface AuthService {
 export function createAuthService(): AuthService {
   const config = getPlatformConfig();
   
-  // 在生产环境中使用真实 API
-  if (config.environment === 'production' && import.meta.env.VITE_SUPABASE_URL) {
-    return new ApiAuthService(config);
-  }
-  
-  // 开发环境使用 Mock 服务
+  // 暂时强制使用 Mock 服务，避免 API 问题
   return new MockAuthService();
 }
 
