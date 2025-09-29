@@ -62,12 +62,14 @@ export interface AuthService {
 export function createAuthService(): AuthService {
   const config = getPlatformConfig();
   
-  // 如果有 Supabase 配置，使用真实 API
-  if (config.environment === 'production' && import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  // 在生产环境中强制使用 API 服务进行调试
+  if (config.environment === 'production') {
+    console.log('使用 ApiAuthService (生产环境)');
     return new ApiAuthService(config);
   }
   
-  // 否则使用 Mock 服务
+  // 开发环境使用 Mock 服务
+  console.log('使用 MockAuthService (开发环境)');
   return new MockAuthService();
 }
 
@@ -219,7 +221,7 @@ class ApiAuthService implements AuthService {
   }
   
   async me(): Promise<User> {
-    const result = await this.request<any>('/auth/me');
+    const result = await this.request<any>('/auth/me-debug');
     
     // API 返回 { success: true, user: ... }
     if (result && typeof result === 'object' && 'success' in result && 'user' in result) {
@@ -251,7 +253,7 @@ class ApiAuthService implements AuthService {
   }
   
   async register(userData: { name: string; email: string; password: string }): Promise<AuthResponse> {
-    const result = await this.request<any>('/auth/register', {
+    const result = await this.request<any>('/auth/register-debug', {
       method: 'POST',
       body: JSON.stringify(userData)
     });
