@@ -378,6 +378,9 @@ class ApiDatabaseService implements DatabaseService {
   
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}/api${endpoint}`;
+    console.log('ApiDatabaseService.request - baseUrl:', this.baseUrl);
+    console.log('ApiDatabaseService.request - endpoint:', endpoint);
+    console.log('ApiDatabaseService.request - full url:', url);
     const token = localStorage.getItem('auth_token');
     
     const response = await fetch(url, {
