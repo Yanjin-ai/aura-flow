@@ -28,11 +28,19 @@ export const AuthProvider = ({ children }) => {
   const checkAuthStatus = async () => {
     try {
       setIsLoading(true);
-      const isAuth = await authService.isAuthenticated();
-      if (isAuth) {
-        const userData = await authService.me();
-        setUser(userData);
-        setIsAuthenticated(true);
+      // 简单检查 localStorage 中是否有 token
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        try {
+          const userData = await authService.me();
+          setUser(userData);
+          setIsAuthenticated(true);
+        } catch (error) {
+          console.error('获取用户信息失败:', error);
+          localStorage.removeItem('auth_token');
+          setUser(null);
+          setIsAuthenticated(false);
+        }
       } else {
         setUser(null);
         setIsAuthenticated(false);
