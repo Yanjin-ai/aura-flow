@@ -50,11 +50,24 @@ VITE_ENABLE_TELEMETRY=true
 VITE_BUILD_VERSION=1.0.0
 ```
 
+### 安全配置
+```bash
+# 数据加密密钥
+ENCRYPTION_KEY=your-32-character-encryption-key
+
+# 安全头配置
+HELMET_ENABLED=true
+RATE_LIMIT_ENABLED=true
+```
+
 ## 部署步骤
 
 ### 1. Supabase 设置
 1. 在 [Supabase](https://supabase.com) 创建新项目
-2. 在 SQL 编辑器中执行 `deploy/supabase-init.sql` 脚本
+2. 在 SQL 编辑器中执行以下脚本（按顺序）：
+   - `deploy/supabase-init.sql` - 基础数据库结构
+   - `deploy/oauth-migration.sql` - OAuth 支持
+   - `deploy/audit-migration.sql` - 审计日志
 3. 获取项目 URL 和 anon key
 
 ### 2. Vercel 部署
@@ -67,6 +80,8 @@ VITE_BUILD_VERSION=1.0.0
 2. 测试用户注册和登录
 3. 测试任务创建和管理
 4. 检查数据库连接
+5. 运行安全检查：`GET /api/security/check`
+6. 验证审计日志：检查 `audit_logs` 表
 
 ## 配置说明
 
