@@ -216,11 +216,11 @@ class ApiAuthService implements AuthService {
   }
   
   async me(): Promise<User> {
-    return this.request<User>('/auth/me');
+    return this.request<User>('/auth/me-simple');
   }
   
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const result = await this.request<any>('/auth/login', {
+    const result = await this.request<any>('/auth/login-simple', {
       method: 'POST',
       body: JSON.stringify(credentials)
     });
