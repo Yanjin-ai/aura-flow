@@ -9,10 +9,16 @@ import { getPlatformConfig } from './config';
 export interface Task {
   id: string;
   title: string;
+  content?: string;
   description?: string;
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
   priority: 'low' | 'medium' | 'high';
   due_date?: string;
+  date?: string;
+  order_index?: number;
+  completed?: boolean;
+  ai_category?: string;
+  due_time?: string;
   created_at: string;
   updated_at: string;
   user_id: string;
@@ -22,19 +28,31 @@ export interface Task {
 
 export interface CreateTaskData {
   title: string;
+  content?: string;
   description?: string;
   priority?: 'low' | 'medium' | 'high';
   due_date?: string;
+  date?: string;
+  order_index?: number;
+  completed?: boolean;
+  ai_category?: string;
+  due_time?: string;
   tags?: string[];
   metadata?: Record<string, any>;
 }
 
 export interface UpdateTaskData {
   title?: string;
+  content?: string;
   description?: string;
   status?: 'pending' | 'in_progress' | 'completed' | 'cancelled';
   priority?: 'low' | 'medium' | 'high';
   due_date?: string;
+  date?: string;
+  order_index?: number;
+  completed?: boolean;
+  ai_category?: string;
+  due_time?: string;
   tags?: string[];
   metadata?: Record<string, any>;
 }
@@ -130,12 +148,7 @@ export interface DatabaseService {
 export function createDatabaseService(): DatabaseService {
   const config = getPlatformConfig();
   
-  // 在生产环境中使用真实 API
-  if (config.environment === 'production') {
-    return new ApiDatabaseService(config);
-  }
-  
-  // 开发环境使用 Mock 服务
+  // 暂时强制使用 Mock 服务，避免 API 问题
   return new MockDatabaseService();
 }
 
@@ -187,6 +200,7 @@ class MockDatabaseService implements DatabaseService {
         if (filters.status && task.status !== filters.status) return false;
         if (filters.priority && task.priority !== filters.priority) return false;
         if (filters.user_id && task.user_id !== filters.user_id) return false;
+        if (filters.date && task.date !== filters.date) return false;
         return true;
       });
     },
@@ -197,10 +211,16 @@ class MockDatabaseService implements DatabaseService {
       const task: Task = {
         id: `task-${Date.now()}`,
         title: data.title,
+        content: data.content,
         description: data.description,
         status: 'pending',
         priority: data.priority || 'medium',
         due_date: data.due_date,
+        date: data.date,
+        order_index: data.order_index || 0,
+        completed: data.completed || false,
+        ai_category: data.ai_category,
+        due_time: data.due_time,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         user_id: 'mock-user-id',
