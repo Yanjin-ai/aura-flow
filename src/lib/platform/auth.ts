@@ -62,7 +62,12 @@ export interface AuthService {
 export function createAuthService(): AuthService {
   const config = getPlatformConfig();
   
-  // 暂时强制使用 Mock 服务，避免 API 问题
+  // 如果有 Supabase 配置，使用真实 API
+  if (config.environment === 'production' && import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+    return new ApiAuthService(config);
+  }
+  
+  // 否则使用 Mock 服务
   return new MockAuthService();
 }
 

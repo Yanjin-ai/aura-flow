@@ -48,8 +48,12 @@ export function getPlatformConfig(): PlatformConfig {
   // 在生产环境中使用真实 API
   if (import.meta.env.MODE === 'production') {
     config.environment = 'production';
-    // 暂时强制使用 mock 服务，直到配置好 Supabase
-    config.ai_provider = 'mock';
+    // 如果有 Supabase 配置，使用真实服务
+    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      config.ai_provider = 'openai'; // 使用真实 AI 服务
+    } else {
+      config.ai_provider = 'mock'; // 使用 mock 服务
+    }
   }
   
   return config;
