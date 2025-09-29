@@ -148,12 +148,14 @@ export interface DatabaseService {
 export function createDatabaseService(): DatabaseService {
   const config = getPlatformConfig();
   
-  // 如果有 Supabase 配置，使用真实 API
-  if (config.environment === 'production' && import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  // 在生产环境中强制使用 API 服务进行调试
+  if (config.environment === 'production') {
+    console.log('使用 ApiDatabaseService (生产环境)');
     return new ApiDatabaseService(config);
   }
   
-  // 否则使用 Mock 服务
+  // 开发环境使用 Mock 服务
+  console.log('使用 MockDatabaseService (开发环境)');
   return new MockDatabaseService();
 }
 
@@ -360,31 +362,33 @@ class MockDatabaseService implements DatabaseService {
 }
 
 /**
- * API 数据库服务（生产环境使用）
+ * API 数据库服务（生产环境使用）- 调试版本
  */
 class ApiDatabaseService implements DatabaseService {
-  private supabase: any;
+  private baseUrl: string;
   
   constructor(private config: any) {
-    // 动态导入 Supabase 客户端
-    this.initSupabase();
+    this.baseUrl = config.api_base_url || '';
   }
   
-  private async initSupabase() {
-    try {
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      if (supabaseUrl && supabaseKey) {
-        this.supabase = createClient(supabaseUrl, supabaseKey);
-      } else {
-        throw new Error('Supabase 配置缺失');
-      }
-    } catch (error) {
-      console.error('Supabase 初始化失败:', error);
-      throw error;
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const url = `${this.baseUrl}/api${endpoint}`;
+    const token = localStorage.getItem('auth_token');
+    
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+        ...options.headers,
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
     }
+    
+    return response.json();
   }
   
   private async getCurrentUserId(): Promise<string> {
@@ -403,110 +407,58 @@ class ApiDatabaseService implements DatabaseService {
   
   tasks = {
     filter: async (filters = {}) => {
-      if (!this.supabase) {
-        throw new Error('Supabase 未初始化');
-      }
-      
       const userId = await this.getCurrentUserId();
-      let query = this.supabase
-        .from('tasks')
-        .select('*')
-        .eq('user_id', userId);
       
-      // 应用过滤器
+      // 构建查询参数
+      const params = new URLSearchParams();
+      params.append('user_id', userId);
+      
       if (filters.date) {
-        query = query.eq('date', filters.date);
+        params.append('date', filters.date);
       }
-      if (filters.status) {
-        query = query.eq('status', filters.status);
-      }
+      
       if (filters.completed !== undefined) {
-        query = query.eq('completed', filters.completed);
+        params.append('completed', filters.completed.toString());
       }
       
-      const { data, error } = await query.order('order_index', { ascending: true });
+      if (filters.category) {
+        params.append('category', filters.category);
+      }
       
-      if (error) throw error;
-      return data || [];
+      const queryString = params.toString();
+      const endpoint = `/tasks-debug${queryString ? '?' + queryString : ''}`;
+      
+      return this.request<Task[]>(endpoint);
     },
     
     create: async (data: CreateTaskData) => {
-      if (!this.supabase) {
-        throw new Error('Supabase 未初始化');
-      }
-      
       const userId = await this.getCurrentUserId();
-      const taskData = {
-        ...data,
-        user_id: userId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
       
-      const { data: result, error } = await this.supabase
-        .from('tasks')
-        .insert(taskData)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return result;
+      return this.request<Task>('/tasks-debug', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...data,
+          user_id: userId
+        })
+      });
     },
     
     update: async (id: string, data: UpdateTaskData) => {
-      if (!this.supabase) {
-        throw new Error('Supabase 未初始化');
-      }
-      
-      const userId = await this.getCurrentUserId();
-      const updateData = {
-        ...data,
-        updated_at: new Date().toISOString()
-      };
-      
-      const { data: result, error } = await this.supabase
-        .from('tasks')
-        .update(updateData)
-        .eq('id', id)
-        .eq('user_id', userId)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return result;
+      return this.request<Task>(`/tasks-debug?id=${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data)
+      });
     },
     
     delete: async (id: string) => {
-      if (!this.supabase) {
-        throw new Error('Supabase 未初始化');
-      }
-      
-      const userId = await this.getCurrentUserId();
-      const { error } = await this.supabase
-        .from('tasks')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', userId);
-      
-      if (error) throw error;
-      return true;
+      return this.request<void>(`/tasks-debug?id=${id}`, {
+        method: 'DELETE'
+      });
     },
     
     getById: async (id: string) => {
-      if (!this.supabase) {
-        throw new Error('Supabase 未初始化');
-      }
-      
-      const userId = await this.getCurrentUserId();
-      const { data, error } = await this.supabase
-        .from('tasks')
-        .select('*')
-        .eq('id', id)
-        .eq('user_id', userId)
-        .single();
-      
-      if (error && error.code !== 'PGRST116') throw error;
-      return data;
+      const tasks = await this.request<Task[]>('/tasks-debug');
+      return tasks.find(task => task.id === id) || null;
     }
   };
   
