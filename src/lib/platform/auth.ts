@@ -62,12 +62,7 @@ export interface AuthService {
 export function createAuthService(): AuthService {
   const config = getPlatformConfig();
   
-  // 在生产环境中使用真实 API
-  if (config.environment === 'production') {
-    return new ApiAuthService(config);
-  }
-  
-  // 开发环境使用 Mock 服务
+  // 暂时强制使用 Mock 服务，避免 API 问题
   return new MockAuthService();
 }
 
@@ -175,9 +170,12 @@ class MockAuthService implements AuthService {
   }
   
   async isAuthenticated(): Promise<boolean> {
-    // 检查本地存储中是否有有效的 token
+    // 检查本地存储中是否有有效的 token 和用户数据
     const token = localStorage.getItem('auth_token');
-    return !!token;
+    const userData = localStorage.getItem('mock_user_data');
+    
+    // 必须有 token 和用户数据才算已认证
+    return !!(token && userData);
   }
 }
 
