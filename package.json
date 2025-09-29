@@ -1,5 +1,5 @@
 {
-  "name": "base44-app",
+  "name": "aura-flow",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -35,7 +35,6 @@
     "perf:install": "npm install -g k6"
   },
   "dependencies": {
-    "@base44/sdk": "^0.1.2",
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^4.1.2",
     "@radix-ui/react-accordion": "^1.2.3",

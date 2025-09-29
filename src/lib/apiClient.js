@@ -1,6 +1,6 @@
 /**
- * 新的 API 客户端
- * 替换 Base44 客户端，使用平台适配层
+ * 统一的 API 客户端
+ * 使用平台适配层提供完整的 API 接口
  */
 
 import { authService, databaseService, aiService, storageService, telemetryService } from './platform/index.ts';
@@ -11,7 +11,7 @@ telemetryService.init().catch(console.error);
 
 /**
  * 统一的 API 客户端接口
- * 提供与 Base44 兼容的接口，但使用新的平台适配层
+ * 提供完整的 API 接口，使用平台适配层
  */
 export const apiClient = {
   // 认证相关
@@ -32,7 +32,7 @@ export const apiClient = {
     isAuthenticated: () => authService.isAuthenticated()
   },
   
-  // 实体操作（兼容 Base44 接口）
+  // 实体操作
   entities: {
     // 任务操作
     Task: {
@@ -63,7 +63,7 @@ export const apiClient = {
     }
   },
   
-  // 集成服务（兼容 Base44 接口）
+  // 集成服务
   integrations: {
     Core: {
       // AI 服务调用
@@ -209,8 +209,7 @@ export const apiClient = {
   }
 };
 
-// 导出兼容性接口
-export const base44 = apiClient;
+// 导出 API 客户端
 
 // 导出默认实例
 export default apiClient;
