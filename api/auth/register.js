@@ -1,6 +1,7 @@
 // 完整的用户注册 API - 使用 Supabase
 import { createClient } from '@supabase/supabase-js'
 import bcrypt from 'bcryptjs'
+import { generateToken } from './jwt.js'
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
@@ -69,11 +70,11 @@ export default async function handler(req, res) {
     }
 
     // 生成 JWT token
-    const token = Buffer.from(JSON.stringify({
+    const token = generateToken({
       user_id: newUser.id,
       email: newUser.email,
-      exp: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7天过期
-    })).toString('base64');
+      name: newUser.name
+    });
 
     res.status(201).json({
       success: true,

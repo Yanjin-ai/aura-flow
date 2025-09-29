@@ -1,5 +1,6 @@
 // 用户信息更新 API - 使用 Supabase
 import { createClient } from '@supabase/supabase-js'
+import { verifyToken, extractTokenFromHeader } from './jwt.js'
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
@@ -22,21 +23,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: '未提供有效的认证令牌' });
-    }
-
-    const token = authHeader.substring(7);
-    
-    // 解码 token
-    const tokenData = JSON.parse(Buffer.from(token, 'base64').toString());
-
-    // 检查 token 是否过期
-    if (tokenData.exp && Date.now() > tokenData.exp) {
-      return res.status(401).json({ error: '认证令牌已过期' });
-    }
+    // 验证 JWT token
+    const token = extractTokenFromHeader(req.headers.authorization);
+    const tokenData = verifyToken(token);
 
     const { name, language, has_seen_welcome_guide, auto_rollover_enabled, auto_rollover_days, rollover_notification_enabled, ai_daily_insights, ai_weekly_insights, ai_url_extraction } = req.body;
 

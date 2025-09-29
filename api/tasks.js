@@ -1,5 +1,6 @@
 // 完整的任务管理 API - 使用 Supabase
 import { createClient } from '@supabase/supabase-js'
+import { verifyToken, extractTokenFromHeader } from './auth/jwt.js'
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://lpelllegamiqdwtgqmsy.supabase.co'
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwZWxsbGVnYW1pcWR3dGdxbXN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MDE4MDgsImV4cCI6MjA3NDM3NzgwOH0.IGt6WyLt4WPXQ7lN4ofCb389yTKUXY4kEDmWK7Sx4as'
@@ -14,20 +15,14 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // 获取认证信息
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: '未提供有效的认证令牌' });
-  }
-
-  const token = authHeader.substring(7);
+  // 验证 JWT token
   let user_id;
-  
   try {
-    const tokenData = JSON.parse(Buffer.from(token, 'base64').toString());
+    const token = extractTokenFromHeader(req.headers.authorization);
+    const tokenData = verifyToken(token);
     user_id = tokenData.user_id;
   } catch (error) {
-    return res.status(401).json({ error: '无效的认证令牌' });
+    return res.status(401).json({ error: error.message });
   }
 
   // 创建 Supabase 客户端

@@ -22,6 +22,23 @@ VITE_AI_API_KEY=your-openai-api-key
 VITE_AI_MODEL=gpt-3.5-turbo
 ```
 
+### JWT 配置
+```bash
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+JWT_EXPIRES_IN=7d
+```
+
+### OAuth 配置（可选）
+```bash
+# Google OAuth
+VITE_GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# GitHub OAuth
+VITE_GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+```
+
 ### 监控配置
 ```bash
 VITE_SENTRY_DSN=your-sentry-dsn
