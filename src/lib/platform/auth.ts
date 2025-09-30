@@ -3,7 +3,7 @@
  * 抽象化用户认证相关操作
  */
 
-import { getPlatformConfig } from './config';
+import { getAppConfig } from '../config';
 
 export interface User {
   id: string;
@@ -60,137 +60,24 @@ export interface AuthService {
  * 创建认证服务实例
  */
 export function createAuthService(): AuthService {
-  const config = getPlatformConfig();
+  const config = getAppConfig();
   
-  // 在生产环境中强制使用 API 服务进行调试
-  if (config.environment === 'production') {
-    console.log('使用 ApiAuthService (生产环境)');
-    return new ApiAuthService(config);
-  }
-  
-  // 开发环境使用 Mock 服务
-  console.log('使用 MockAuthService (开发环境)');
-  return new MockAuthService();
+  // 统一使用 API 服务
+  return new ApiAuthService(config);
 }
 
-/**
- * Mock 认证服务（开发环境使用）
- */
-class MockAuthService implements AuthService {
-  private getDefaultUser(): User {
-    return {
-      id: 'mock-user-id',
-      email: 'dev@example.com',
-      name: '开发用户',
-      has_seen_welcome_guide: true,
-      language: 'zh-CN',
-      auto_rollover_enabled: true,
-      auto_rollover_days: 3,
-      rollover_notification_enabled: true,
-      ai_daily_insights: true,
-      ai_weekly_insights: true,
-      ai_url_extraction: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-  }
-  
-  async me(): Promise<User> {
-    // 模拟网络延迟
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // 从本地存储读取用户信息，如果没有则返回默认用户
-    const storedUser = localStorage.getItem('mock_user_data');
-    if (storedUser) {
-      return JSON.parse(storedUser);
-    }
-    
-    return this.getDefaultUser();
-  }
-  
-  async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    // 从本地存储读取用户信息，如果没有则创建新用户
-    let user = this.getDefaultUser();
-    const storedUser = localStorage.getItem('mock_user_data');
-    if (storedUser) {
-      user = JSON.parse(storedUser);
-    }
-    
-    const response = {
-      user: { ...user, email: credentials.email },
-      token: 'mock-jwt-token',
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-    };
-    
-    // 保存 token 和用户信息到本地存储
-    localStorage.setItem('auth_token', response.token);
-    localStorage.setItem('mock_user_data', JSON.stringify(response.user));
-    
-    return response;
-  }
-  
-  async register(userData: { name: string; email: string; password: string }): Promise<AuthResponse> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const newUser = {
-      ...this.getDefaultUser(),
-      id: `mock-user-${Date.now()}`,
-      email: userData.email,
-      name: userData.name,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    const response = {
-      user: newUser,
-      token: 'mock-jwt-token',
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-    };
-    
-    // 保存 token 和用户信息到本地存储
-    localStorage.setItem('auth_token', response.token);
-    localStorage.setItem('mock_user_data', JSON.stringify(response.user));
-    
-    return response;
-  }
-  
-  async logout(): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 100));
-    // 清除本地存储的 token 和用户信息
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('mock_user_data');
-  }
-  
-  async updateUser(userData: Partial<User>): Promise<User> {
-    await new Promise(resolve => setTimeout(resolve, 150));
-    
-    // 从本地存储读取当前用户信息
-    const currentUser = await this.me();
-    const updatedUser = { ...currentUser, ...userData, updated_at: new Date().toISOString() };
-    
-    // 保存更新后的用户信息到本地存储
-    localStorage.setItem('mock_user_data', JSON.stringify(updatedUser));
-    
-    return updatedUser;
-  }
-  
-  async isAuthenticated(): Promise<boolean> {
-    // 检查本地存储中是否有有效的 token 和用户数据
-    const token = localStorage.getItem('auth_token');
-    const userData = localStorage.getItem('mock_user_data');
-    
-    // 必须有 token 和用户数据才算已认证
-    return !!(token && userData);
-  }
-}
 
 /**
  * API 认证服务（生产环境使用）
  */
 class ApiAuthService implements AuthService {
-  constructor(private config: any) {}
+  private baseUrl: string;
+  private debugMode: boolean;
+  
+  constructor(private config: any) {
+    this.baseUrl = config.apiBaseUrl || '';
+    this.debugMode = config.auth.debugMode || false;
+  }
   
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     // 使用相对路径，指向 Vercel API 路由
@@ -221,7 +108,7 @@ class ApiAuthService implements AuthService {
   }
   
   async me(): Promise<User> {
-    const result = await this.request<any>('/auth/me-debug');
+    const result = await this.request<any>('/auth/me');
     
     // API 返回 { success: true, user: ... }
     if (result && typeof result === 'object' && 'success' in result && 'user' in result) {
@@ -253,7 +140,7 @@ class ApiAuthService implements AuthService {
   }
   
   async register(userData: { name: string; email: string; password: string }): Promise<AuthResponse> {
-    const result = await this.request<any>('/auth/register-debug', {
+    const result = await this.request<any>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData)
     });

@@ -3,7 +3,7 @@
  * 抽象化数据实体操作
  */
 
-import { getPlatformConfig } from './config';
+import { getAppConfig } from '../config';
 
 // 任务相关类型
 export interface Task {
@@ -146,241 +146,27 @@ export interface DatabaseService {
  * 创建数据库服务实例
  */
 export function createDatabaseService(): DatabaseService {
-  const config = getPlatformConfig();
+  const config = getAppConfig();
   
-  // 在生产环境中强制使用 API 服务进行调试
-  if (config.environment === 'production') {
-    console.log('使用 ApiDatabaseService (生产环境)');
-    return new ApiDatabaseService(config);
-  }
-  
-  // 开发环境使用 Mock 服务
-  console.log('使用 MockDatabaseService (开发环境)');
-  return new MockDatabaseService();
+  // 统一使用 API 服务
+  return new ApiDatabaseService(config);
 }
 
-/**
- * Mock 数据库服务（开发环境使用）
- */
-class MockDatabaseService implements DatabaseService {
-  private getTasksData(): Task[] {
-    const stored = localStorage.getItem('mock_tasks_data');
-    return stored ? JSON.parse(stored) : [];
-  }
-  
-  private setTasksData(tasks: Task[]): void {
-    localStorage.setItem('mock_tasks_data', JSON.stringify(tasks));
-  }
-  
-  private getInsightsData(): Insight[] {
-    const stored = localStorage.getItem('mock_insights_data');
-    return stored ? JSON.parse(stored) : [];
-  }
-  
-  private setInsightsData(insights: Insight[]): void {
-    localStorage.setItem('mock_insights_data', JSON.stringify(insights));
-  }
-  
-  private getReflectionsData(): Reflection[] {
-    const stored = localStorage.getItem('mock_reflections_data');
-    return stored ? JSON.parse(stored) : [];
-  }
-  
-  private setReflectionsData(reflections: Reflection[]): void {
-    localStorage.setItem('mock_reflections_data', JSON.stringify(reflections));
-  }
-  
-  private getFeedbackData(): InsightFeedback[] {
-    const stored = localStorage.getItem('mock_feedback_data');
-    return stored ? JSON.parse(stored) : [];
-  }
-  
-  private setFeedbackData(feedback: InsightFeedback[]): void {
-    localStorage.setItem('mock_feedback_data', JSON.stringify(feedback));
-  }
-  
-  tasks = {
-    filter: async (filters = {}) => {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      const tasksData = this.getTasksData();
-      return tasksData.filter(task => {
-        if (filters.status && task.status !== filters.status) return false;
-        if (filters.priority && task.priority !== filters.priority) return false;
-        if (filters.user_id && task.user_id !== filters.user_id) return false;
-        if (filters.date && task.date !== filters.date) return false;
-        return true;
-      });
-    },
-    
-    create: async (data: CreateTaskData) => {
-      await new Promise(resolve => setTimeout(resolve, 150));
-      const tasksData = this.getTasksData();
-      const task: Task = {
-        id: `task-${Date.now()}`,
-        title: data.title,
-        content: data.content,
-        description: data.description,
-        status: 'pending',
-        priority: data.priority || 'medium',
-        due_date: data.due_date,
-        date: data.date,
-        order_index: data.order_index || 0,
-        completed: data.completed || false,
-        ai_category: data.ai_category,
-        due_time: data.due_time,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        user_id: 'mock-user-id',
-        tags: data.tags,
-        metadata: data.metadata
-      };
-      tasksData.push(task);
-      this.setTasksData(tasksData);
-      return task;
-    },
-    
-    update: async (id: string, data: UpdateTaskData) => {
-      await new Promise(resolve => setTimeout(resolve, 150));
-      const tasksData = this.getTasksData();
-      const index = tasksData.findIndex(task => task.id === id);
-      if (index === -1) throw new Error('任务不存在');
-      
-      tasksData[index] = {
-        ...tasksData[index],
-        ...data,
-        updated_at: new Date().toISOString()
-      };
-      this.setTasksData(tasksData);
-      return tasksData[index];
-    },
-    
-    delete: async (id: string) => {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      const tasksData = this.getTasksData();
-      const index = tasksData.findIndex(task => task.id === id);
-      if (index === -1) return false;
-      
-      tasksData.splice(index, 1);
-      this.setTasksData(tasksData);
-      return true;
-    },
-    
-    getById: async (id: string) => {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      const tasksData = this.getTasksData();
-      return tasksData.find(task => task.id === id) || null;
-    }
-  };
-  
-  insights = {
-    filter: async (filters = {}) => {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      const insightsData = this.getInsightsData();
-      return insightsData.filter(insight => {
-        if (filters.type && insight.type !== filters.type) return false;
-        if (filters.user_id && insight.user_id !== filters.user_id) return false;
-        return true;
-      });
-    },
-    
-    create: async (data: CreateInsightData) => {
-      await new Promise(resolve => setTimeout(resolve, 200));
-      const insightsData = this.getInsightsData();
-      const insight: Insight = {
-        id: `insight-${Date.now()}`,
-        title: data.title,
-        content: data.content,
-        type: data.type,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        user_id: 'mock-user-id',
-        metadata: data.metadata
-      };
-      insightsData.push(insight);
-      this.setInsightsData(insightsData);
-      return insight;
-    },
-    
-    getById: async (id: string) => {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      const insightsData = this.getInsightsData();
-      return insightsData.find(insight => insight.id === id) || null;
-    }
-  };
-  
-  reflections = {
-    filter: async (filters = {}) => {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      const reflectionsData = this.getReflectionsData();
-      return reflectionsData.filter(reflection => {
-        if (filters.user_id && reflection.user_id !== filters.user_id) return false;
-        return true;
-      });
-    },
-    
-    create: async (data: CreateReflectionData) => {
-      await new Promise(resolve => setTimeout(resolve, 150));
-      const reflectionsData = this.getReflectionsData();
-      const reflection: Reflection = {
-        id: `reflection-${Date.now()}`,
-        content: data.content,
-        mood: data.mood,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        user_id: 'mock-user-id',
-        metadata: data.metadata
-      };
-      reflectionsData.push(reflection);
-      this.setReflectionsData(reflectionsData);
-      return reflection;
-    },
-    
-    getById: async (id: string) => {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      const reflectionsData = this.getReflectionsData();
-      return reflectionsData.find(reflection => reflection.id === id) || null;
-    }
-  };
-  
-  insightFeedback = {
-    create: async (data: CreateInsightFeedbackData) => {
-      await new Promise(resolve => setTimeout(resolve, 150));
-      const feedbackData = this.getFeedbackData();
-      const feedback: InsightFeedback = {
-        id: `feedback-${Date.now()}`,
-        insight_id: data.insight_id,
-        rating: data.rating,
-        comment: data.comment,
-        created_at: new Date().toISOString(),
-        user_id: 'mock-user-id'
-      };
-      feedbackData.push(feedback);
-      this.setFeedbackData(feedbackData);
-      return feedback;
-    }
-  };
-}
 
 /**
  * API 数据库服务（生产环境使用）- 调试版本
  */
 class ApiDatabaseService implements DatabaseService {
   private baseUrl: string;
+  private debugMode: boolean;
   
   constructor(private config: any) {
-    // 在生产环境中，强制使用相对路径调用我们的 Vercel API
-    if (config.environment === 'production') {
-      this.baseUrl = ''; // 使用相对路径
-    } else {
-      this.baseUrl = config.api_base_url || '';
-    }
+    this.baseUrl = config.apiBaseUrl || '';
+    this.debugMode = config.database.debugMode || false;
   }
   
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}/api${endpoint}`;
-    console.log('ApiDatabaseService.request - baseUrl:', this.baseUrl);
-    console.log('ApiDatabaseService.request - endpoint:', endpoint);
-    console.log('ApiDatabaseService.request - full url:', url);
     const token = localStorage.getItem('auth_token');
     
     const response = await fetch(url, {
@@ -414,7 +200,7 @@ class ApiDatabaseService implements DatabaseService {
   }
   
   tasks = {
-    filter: async (filters = {}) => {
+    filter: async (filters: any = {}) => {
       const userId = await this.getCurrentUserId();
       
       // 构建查询参数
@@ -434,7 +220,7 @@ class ApiDatabaseService implements DatabaseService {
       }
       
       const queryString = params.toString();
-      const endpoint = `/tasks-debug${queryString ? '?' + queryString : ''}`;
+      const endpoint = `/tasks${queryString ? '?' + queryString : ''}`;
       
       return this.request<Task[]>(endpoint);
     },
@@ -442,7 +228,7 @@ class ApiDatabaseService implements DatabaseService {
     create: async (data: CreateTaskData) => {
       const userId = await this.getCurrentUserId();
       
-      return this.request<Task>('/tasks-debug', {
+      return this.request<Task>('/tasks', {
         method: 'POST',
         body: JSON.stringify({
           ...data,
@@ -452,29 +238,30 @@ class ApiDatabaseService implements DatabaseService {
     },
     
     update: async (id: string, data: UpdateTaskData) => {
-      return this.request<Task>(`/tasks-debug?id=${id}`, {
+      return this.request<Task>(`/tasks?id=${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data)
       });
     },
     
     delete: async (id: string) => {
-      return this.request<void>(`/tasks-debug?id=${id}`, {
+      await this.request<void>(`/tasks?id=${id}`, {
         method: 'DELETE'
       });
+      return true;
     },
     
     getById: async (id: string) => {
-      const tasks = await this.request<Task[]>('/tasks-debug');
+      const tasks = await this.request<Task[]>('/tasks');
       return tasks.find(task => task.id === id) || null;
     }
   };
   
   insights = {
-    filter: async (filters = {}) => {
+    filter: async (filters: any = {}) => {
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
-        if (value) params.append(key, value);
+        if (value) params.append(key, String(value));
       });
       
       return this.request<Insight[]>(`/insights?${params.toString()}`);
@@ -493,10 +280,10 @@ class ApiDatabaseService implements DatabaseService {
   };
   
   reflections = {
-    filter: async (filters = {}) => {
+    filter: async (filters: any = {}) => {
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
-        if (value) params.append(key, value);
+        if (value) params.append(key, String(value));
       });
       
       return this.request<Reflection[]>(`/reflections?${params.toString()}`);
