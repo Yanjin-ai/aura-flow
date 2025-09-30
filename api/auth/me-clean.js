@@ -1,17 +1,6 @@
-// 用户信息 API - 使用 Supabase 数据库
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.VITE_SUPABASE_URL
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('缺少 Supabase 环境变量')
-}
-
-// 创建 Supabase 客户端
-const supabase = createClient(supabaseUrl, supabaseKey)
-
+// 用户信息 API
 export default async function handler(req, res) {
+  
   // 设置 CORS 头
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -49,41 +38,26 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: '认证令牌已过期' });
     }
 
-    // 从数据库获取用户信息
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', tokenData.user_id)
-      .single();
-
-    if (error) {
-      return res.status(500).json({ error: '数据库查询失败' });
-    }
-
-    if (!user) {
-      return res.status(404).json({ error: '用户不存在' });
-    }
-
-    // 返回用户信息（不包含密码）
-    const userInfo = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      has_seen_welcome_guide: user.has_seen_welcome_guide,
-      language: user.language,
-      auto_rollover_enabled: user.auto_rollover_enabled,
-      auto_rollover_days: user.auto_rollover_days,
-      rollover_notification_enabled: user.rollover_notification_enabled,
-      ai_daily_insights: user.ai_daily_insights,
-      ai_weekly_insights: user.ai_weekly_insights,
-      ai_url_extraction: user.ai_url_extraction,
-      created_at: user.created_at,
-      updated_at: user.updated_at
+    // 返回模拟用户数据
+    const mockUser = {
+      id: tokenData.user_id,
+      email: tokenData.email,
+      name: tokenData.name,
+      language: 'zh-CN',
+      has_seen_welcome_guide: false,
+      auto_rollover_enabled: true,
+      auto_rollover_days: 7,
+      rollover_notification_enabled: true,
+      ai_daily_insights: true,
+      ai_weekly_insights: true,
+      ai_url_extraction: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
 
     return res.status(200).json({
       success: true,
-      user: userInfo
+      user: mockUser
     });
 
   } catch (error) {
