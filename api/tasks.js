@@ -1,11 +1,13 @@
-// 任务 API - 使用 Supabase 数据库
+// 任务 API - 使用 Supabase 数据库（JWT + 服务端密钥）
 import { createClient } from '@supabase/supabase-js'
+import { extractTokenFromHeader, verifyToken } from './auth/jwt.js'
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
+// 优先使用服务端密钥，避免 RLS 拦截（仅用于服务端函数）
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error('缺少 Supabase 环境变量')
+  console.error('缺少 Supabase 环境变量 (SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY)')
 }
 
 // 创建 Supabase 客户端
@@ -22,26 +24,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 验证用户身份
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: '未提供有效的认证令牌' });
-    }
-
-    const token = authHeader.substring(7);
-    let tokenData;
-    try {
-      const decodedToken = Buffer.from(token, 'base64').toString();
-      tokenData = JSON.parse(decodedToken);
-    } catch (parseError) {
-      return res.status(401).json({ error: '无效的认证令牌格式' });
-    }
-
-    if (tokenData.exp && Date.now() > tokenData.exp) {
-      return res.status(401).json({ error: '认证令牌已过期' });
-    }
-
-    const userId = tokenData.user_id;
+    // 验证用户身份（JWT）
+    const token = extractTokenFromHeader(req.headers.authorization)
+    const decoded = verifyToken(token)
+    const userId = decoded.user_id
 
     if (req.method === 'GET') {
       // 获取任务列表
