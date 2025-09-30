@@ -1,16 +1,16 @@
 // 用户注册 API - 使用 Supabase 数据库
 import { createClient } from '@supabase/supabase-js'
 import bcrypt from 'bcryptjs'
+import { generateToken } from './jwt.js'
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
+// 优先使用服务端密钥，避免 RLS 401/500（仅服务端使用）
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error('缺少 Supabase 环境变量')
-}
+const hasSupabaseConfig = !!(supabaseUrl && supabaseKey)
 
 // 创建 Supabase 客户端
-const supabase = createClient(supabaseUrl, supabaseKey)
+const supabase = hasSupabaseConfig ? createClient(supabaseUrl, supabaseKey) : null
 
 export default async function handler(req, res) {
   // 设置 CORS 头
@@ -27,6 +27,9 @@ export default async function handler(req, res) {
   }
 
   try {
+    if (!hasSupabaseConfig) {
+      return res.status(500).json({ error: '服务器未正确配置数据库连接 (缺少 SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)' });
+    }
     const { email, password, name } = req.body;
 
     if (!email || !password || !name) {
@@ -75,13 +78,12 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: '注册失败，请稍后重试' });
     }
 
-    // 生成简单的 token（base64 编码）
-    const token = Buffer.from(JSON.stringify({
+    // 生成 JWT token（签名）
+    const token = generateToken({
       user_id: newUser.id,
       email: newUser.email,
-      name: newUser.name,
-      exp: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7天后过期
-    })).toString('base64');
+      name: newUser.name
+    })
 
     return res.status(201).json({
       success: true,

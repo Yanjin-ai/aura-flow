@@ -1,9 +1,11 @@
 // 用户登录 API - 使用 Supabase 数据库
 import { createClient } from '@supabase/supabase-js'
 import bcrypt from 'bcryptjs'
+import { generateToken } from './jwt.js'
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
+// 优先使用服务端密钥，避免 RLS 401/500（仅服务端使用）
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
 
 // 检查是否配置了 Supabase
 const hasSupabaseConfig = supabaseUrl && supabaseKey
@@ -26,6 +28,9 @@ export default async function handler(req, res) {
   }
 
   try {
+    if (!hasSupabaseConfig) {
+      return res.status(500).json({ error: '服务器未正确配置数据库连接 (缺少 SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)' });
+    }
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -52,13 +57,12 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: '密码错误' });
     }
 
-    // 生成简单的 token（base64 编码）
-    const token = Buffer.from(JSON.stringify({
+    // 生成 JWT token（签名）
+    const token = generateToken({
       user_id: user.id,
       email: user.email,
-      name: user.name,
-      exp: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7天后过期
-    })).toString('base64');
+      name: user.name
+    })
 
     res.status(200).json({
       success: true,
