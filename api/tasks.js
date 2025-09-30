@@ -60,33 +60,26 @@ export default async function handler(req, res) {
     }
     
     if (req.method === 'POST') {
-      // 创建新任务
-      const taskData = req.body;
-      
+      // 创建新任务（最小字段集，避免类型/列不一致导致 500）
+      const body = req.body || {};
+      const insertData = {
+        user_id: userId,
+        title: body.title || body.content || '新任务',
+        content: body.content || body.title || '新任务',
+        status: body.status || 'pending',
+        priority: body.priority || 'medium',
+        date: body.date || new Date().toISOString().split('T')[0],
+        completed: !!body.completed,
+      };
+
       const { data: newTask, error } = await supabase
         .from('tasks')
-        .insert({
-          user_id: userId,
-          title: taskData.title || taskData.content || '新任务',
-          content: taskData.content || taskData.title || '新任务',
-          description: taskData.description || '',
-          status: taskData.status || 'pending',
-          priority: taskData.priority || 'medium',
-          due_date: taskData.due_date || null,
-          due_time: taskData.due_time || null,
-          date: taskData.date || new Date().toISOString().split('T')[0],
-          order_index: taskData.order_index || 0,
-          completed: taskData.completed || false,
-          ai_category: taskData.ai_category || null,
-          category: taskData.category || null,
-          tags: taskData.tags || [],
-          metadata: taskData.metadata || {}
-        })
+        .insert(insertData)
         .select()
         .single();
       
       if (error) {
-        return res.status(500).json({ error: '创建任务失败: ' + error.message });
+        return res.status(500).json({ error: '创建任务失败: ' + (error.message || JSON.stringify(error)) });
       }
       
       return res.status(201).json(newTask);
