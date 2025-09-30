@@ -5,12 +5,11 @@ import bcrypt from 'bcryptjs'
 const supabaseUrl = process.env.VITE_SUPABASE_URL
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error('缺少 Supabase 环境变量')
-}
+// 检查是否配置了 Supabase
+const hasSupabaseConfig = supabaseUrl && supabaseKey
 
-// 创建 Supabase 客户端
-const supabase = createClient(supabaseUrl, supabaseKey)
+// 创建 Supabase 客户端（如果配置了的话）
+const supabase = hasSupabaseConfig ? createClient(supabaseUrl, supabaseKey) : null
 
 export default async function handler(req, res) {
   // 设置 CORS 头
