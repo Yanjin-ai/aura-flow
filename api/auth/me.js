@@ -1,9 +1,11 @@
-// 用户信息 API
+// 用户信息 API（JWT 验证 v2）
+import { extractTokenFromHeader, verifyToken } from './jwt.js'
+
 export default async function handler(req, res) {
   
   // 设置 CORS 头
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
@@ -15,30 +17,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 检查 Authorization 头
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: '未提供有效的认证令牌' });
-    }
+    const token = extractTokenFromHeader(req.headers.authorization)
+    const tokenData = verifyToken(token)
 
-    // 提取 token
-    const token = authHeader.substring(7);
-
-    // 解析 token（base64 编码的 JSON）
-    let tokenData;
-    try {
-      const decodedToken = Buffer.from(token, 'base64').toString();
-      tokenData = JSON.parse(decodedToken);
-    } catch (parseError) {
-      return res.status(401).json({ error: '无效的认证令牌格式' });
-    }
-
-    // 检查 token 是否过期
-    if (tokenData.exp && Date.now() > tokenData.exp) {
-      return res.status(401).json({ error: '认证令牌已过期' });
-    }
-
-    // 返回模拟用户数据
+    // 返回用户数据（目前与登录/注册返回字段一致）
     const mockUser = {
       id: tokenData.user_id,
       email: tokenData.email,
@@ -57,10 +39,11 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      user: mockUser
+      user: mockUser,
+      source: 'me-jwt-v2'
     });
 
   } catch (error) {
-    res.status(401).json({ error: '无效的认证令牌: ' + error.message });
+    res.status(401).json({ error: '无效的认证令牌: ' + (error?.message || 'Unknown error') });
   }
 }
