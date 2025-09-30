@@ -81,7 +81,9 @@ class ApiAuthService implements AuthService {
   
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     // 使用相对路径，指向 Vercel API 路由
-    const url = `/api${endpoint}`;
+    // 暂时把 /auth/me 切到 /auth/me-v2 以规避旧函数缓存
+    const fixedEndpoint = endpoint === '/auth/me' ? '/auth/me-v2' : endpoint;
+    const url = `/api${fixedEndpoint}`;
     const token = localStorage.getItem('auth_token');
     
     const response = await fetch(url, {
