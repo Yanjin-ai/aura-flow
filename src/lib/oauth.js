@@ -74,10 +74,7 @@ export async function handleOAuthCallback(provider, code, state) {
     const result = await response.json();
     
     if (result.success) {
-      // 保存认证信息
-      localStorage.setItem('auth_token', result.token);
-      localStorage.setItem('user_data', JSON.stringify(result.user));
-      
+      // 使用 cookie 认证，无需手动保存 token
       return result;
     } else {
       throw new Error(result.error || 'OAuth 认证失败');

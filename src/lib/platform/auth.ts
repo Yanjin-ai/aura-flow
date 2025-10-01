@@ -84,15 +84,14 @@ class ApiAuthService implements AuthService {
     // 暂时把 /auth/me 切到 /auth/me-v2 以规避旧函数缓存
     const fixedEndpoint = endpoint === '/auth/me' ? '/auth/me-v2' : endpoint;
     const url = `/api${fixedEndpoint}`;
-    const token = localStorage.getItem('auth_token');
     
     const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers
-      }
+      },
+      credentials: 'include' // 使用 cookie 认证
     });
     
     if (!response.ok) {
@@ -135,8 +134,7 @@ class ApiAuthService implements AuthService {
         }
       : result;
     
-    // 保存 token
-    localStorage.setItem('auth_token', response.token);
+    // 使用 cookie 认证，无需手动保存 token
     
     return response;
   }
@@ -156,8 +154,7 @@ class ApiAuthService implements AuthService {
         }
       : result;
     
-    // 保存 token
-    localStorage.setItem('auth_token', response.token);
+    // 使用 cookie 认证，无需手动保存 token
     
     return response;
   }
@@ -177,7 +174,8 @@ class ApiAuthService implements AuthService {
   }
   
   async logout(): Promise<void> {
-    localStorage.removeItem('auth_token');
+    // 使用 cookie 认证，无需手动清除 token
+    // 后端会清除 cookie
   }
   
   

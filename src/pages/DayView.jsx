@@ -29,7 +29,7 @@ export default function DayView() {
       } catch (error) {
         console.error("Failed to check user for welcome guide:", error);
         // 开发模式：如果 API 调用失败，不显示欢迎指引
-        console.log("开发模式：跳过欢迎指引检查");
+        if (import.meta.env.DEV) console.log("开发模式：跳过欢迎指引检查");
       }
     };
     
@@ -38,7 +38,7 @@ export default function DayView() {
     // 注册AI分类回调
     setOnTaskCategoryResolved(async ({ taskId, result }) => {
       try {
-        console.log(`AI result received for task ${taskId}, writing back...`, result);
+        if (import.meta.env.DEV) console.log(`AI result received for task ${taskId}, writing back...`, result);
         const updatedFields = {
           ai_category: result.category,
           ai_confidence: result.confidence,
@@ -68,7 +68,7 @@ export default function DayView() {
       } catch (error) {
         console.error("Failed to load tasks:", error);
         // 开发模式：如果 API 调用失败，使用空数组
-        console.log("开发模式：使用空任务列表");
+        if (import.meta.env.DEV) console.log("开发模式：使用空任务列表");
         setTasks([]);
       }
     };
@@ -83,7 +83,7 @@ export default function DayView() {
     } catch (error) {
       console.error("Failed to update user welcome guide status:", error);
       // 开发模式：即使更新失败也继续
-      console.log("开发模式：跳过用户数据更新");
+      if (import.meta.env.DEV) console.log("开发模式：跳过用户数据更新");
     }
   };
 

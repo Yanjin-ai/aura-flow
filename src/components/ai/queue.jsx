@@ -25,13 +25,13 @@ export function setOnTaskCategoryResolved(callback) {
 export function enqueueTaskForClassification({ taskId, text, locale = "zh-CN" }) {
   // 检查AI功能是否启用
   if (!AI_ENABLED || !AI_CLASSIFY_ENABLED) {
-    console.log("AI classification is disabled, skipping task:", taskId);
+    if (import.meta.env.DEV) console.log("AI classification is disabled, skipping task:", taskId);
     return;
   }
 
   // 检查是否已在队列中
   if (classificationQueue.some(item => item.taskId === taskId)) {
-    console.log("Task already in classification queue:", taskId);
+    if (import.meta.env.DEV) console.log("Task already in classification queue:", taskId);
     return;
   }
 
@@ -45,7 +45,7 @@ export function enqueueTaskForClassification({ taskId, text, locale = "zh-CN" })
   };
   
   classificationQueue.push(queueItem);
-  console.log(`Task ${taskId} added to classification queue. Queue size: ${classificationQueue.length}`);
+if (import.meta.env.DEV) console.log(`Task ${taskId} added to classification queue. Queue size: ${classificationQueue.length}`);
   
   // 启动或重置处理定时器
   scheduleQueueProcessing();
@@ -86,7 +86,7 @@ async function processQueue() {
     return;
   }
   
-  console.log(`Processing ${classificationQueue.length} tasks in classification queue`);
+if (import.meta.env.DEV) console.log(`Processing ${classificationQueue.length} tasks in classification queue`);
   
   // 取出当前队列中的所有任务
   const tasksToProcess = [...classificationQueue];
@@ -104,14 +104,14 @@ async function processQueue() {
     await Promise.allSettled(
       batch.map(async (queueItem) => {
         try {
-          console.log(`Classifying task ${queueItem.taskId}: "${queueItem.text.substring(0, 50)}..."`);
+          if (import.meta.env.DEV) console.log(`Classifying task ${queueItem.taskId}: "${queueItem.text.substring(0, 50)}..."`);
           
           const result = await classifyTask({
             text: queueItem.text,
             locale: queueItem.locale
           });
           
-          console.log(`Task ${queueItem.taskId} classified as: ${result.category} (confidence: ${result.confidence})`);
+          if (import.meta.env.DEV) console.log(`Task ${queueItem.taskId} classified as: ${result.category} (confidence: ${result.confidence})`);
           
           // 调用回调函数
           if (onTaskCategoryResolvedCallback) {
@@ -130,7 +130,7 @@ async function processQueue() {
           if (queueItem.retryCount < 1) {
             queueItem.retryCount++;
             classificationQueue.push(queueItem);
-            console.log(`Task ${queueItem.taskId} queued for retry (attempt ${queueItem.retryCount + 1})`);
+            if (import.meta.env.DEV) console.log(`Task ${queueItem.taskId} queued for retry (attempt ${queueItem.retryCount + 1})`);
           } else {
             console.error(`Task ${queueItem.taskId} failed after all retries`);
             
@@ -180,5 +180,5 @@ export function clearQueue() {
     clearTimeout(processingTimer);
     processingTimer = null;
   }
-  console.log("Classification queue cleared");
+if (import.meta.env.DEV) console.log("Classification queue cleared");
 }

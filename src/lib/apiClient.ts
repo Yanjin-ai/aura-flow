@@ -11,7 +11,9 @@ if (configuredBase && /supabase\.co/.test(configuredBase)) {
 const apiBaseUrl = configuredBase || (import.meta.env.DEV ? 'http://localhost:3001' : '/');
 
 // 调试输出：便于排查部署配置
-console.log('API Client - resolved apiBaseUrl:', apiBaseUrl);
+if (import.meta.env.DEV) {
+  console.log('API Client - resolved apiBaseUrl:', apiBaseUrl);
+}
 
 const apiClient = axios.create({
   baseURL: apiBaseUrl,

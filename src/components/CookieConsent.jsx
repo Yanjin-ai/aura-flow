@@ -62,11 +62,11 @@ const CookieConsent = () => {
     // 这里可以根据偏好启用/禁用分析脚本
     if (prefs.analytics) {
       // 启用 Google Analytics 或其他分析工具
-      console.log('分析 Cookie 已启用');
+      if (import.meta.env.DEV) console.log('分析 Cookie 已启用');
       // 例如：gtag('consent', 'update', { analytics_storage: 'granted' });
     } else {
       // 禁用分析脚本
-      console.log('分析 Cookie 已禁用');
+      if (import.meta.env.DEV) console.log('分析 Cookie 已禁用');
       // 例如：gtag('consent', 'update', { analytics_storage: 'denied' });
     }
   };

@@ -37,3 +37,4 @@ export default async function handler(req, res) {
 
 // 简单注释：新增 v2 路由，确保使用 JWT 校验，绕过旧函数部署缓存。
 
+

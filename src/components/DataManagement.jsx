@@ -29,9 +29,10 @@ const DataManagement = () => {
       const response = await fetch('/api/data-management/export-my-data', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          // 使用 cookie 认证
           'Content-Type': 'application/json'
-        }
+        },
+        credentials: 'include'
       });
 
       if (!response.ok) {
@@ -75,9 +76,10 @@ const DataManagement = () => {
       const response = await fetch('/api/data-management/delete-my-data', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          // 使用 cookie 认证
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({
           confirmation: deleteConfirmation
         })

@@ -45,7 +45,7 @@ export async function classifyTask({ text, locale = "zh-CN" }) {
  */
 export async function extractTaskFromUrl(url) {
   try {
-    console.log("Extracting task details from URL:", url);
+    if (import.meta.env.DEV) console.log("Extracting task details from URL:", url);
     
     const prompt = `请分析以下链接的内容，并提取出可作为待办任务的信息。请关注页面的标题、主要内容、关键行动项、日期信息等。
 
@@ -149,7 +149,7 @@ export async function generateDailyInsight(payload) {
     // 尝试从缓存获取
     const cached = getFromCache(cacheKey);
     if (cached && cached.checksum === payload.checksum) {
-      console.log("Daily insight cache hit");
+      if (import.meta.env.DEV) console.log("Daily insight cache hit");
       return cached.data;
     }
     
@@ -201,7 +201,7 @@ export async function generateWeeklyInsight(payload) {
     // 尝试从缓存获取
     const cached = getFromCache(cacheKey);
     if (cached && cached.checksum === payload.checksum) {
-      console.log("Weekly insight cache hit");
+      if (import.meta.env.DEV) console.log("Weekly insight cache hit");
       return cached.data;
     }
     

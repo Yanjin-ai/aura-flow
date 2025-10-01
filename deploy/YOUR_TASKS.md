@@ -99,7 +99,7 @@
 | `VITE_BUILD_VERSION` | `1.0.0` | 版本号 |
 | `VITE_API_BASE_URL` | `https://xxx.supabase.co` | 同Project URL |
 | `VITE_AI_PROVIDER` | `mock` | AI服务 |
-| `VITE_ENABLE_TELEMETRY` | `false` | 遥测开关 |
+| `VITE_ENABLE_TELEMETRY` | `false` | 遥测开关 |image.png
 
 ### 4.3 开始部署
 - 点击 **"Deploy"** 按钮

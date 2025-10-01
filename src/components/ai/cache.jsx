@@ -23,11 +23,11 @@ export function getFromCache(key) {
   // 检查是否过期
   if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
     memoryCache.delete(key);
-    console.log(`Cache entry expired and removed: ${key}`);
+    if (import.meta.env.DEV) console.log(`Cache entry expired and removed: ${key}`);
     return null;
   }
   
-  console.log(`Cache hit: ${key}`);
+if (import.meta.env.DEV) console.log(`Cache hit: ${key}`);
   return entry;
 }
 
@@ -42,7 +42,7 @@ export function setToCache(key, data, checksum) {
   if (memoryCache.size >= MAX_CACHE_SIZE) {
     const firstKey = memoryCache.keys().next().value;
     memoryCache.delete(firstKey);
-    console.log(`Cache full, removed oldest entry: ${firstKey}`);
+  if (import.meta.env.DEV) console.log(`Cache full, removed oldest entry: ${firstKey}`);
   }
   
   const entry = {
@@ -53,7 +53,7 @@ export function setToCache(key, data, checksum) {
   };
   
   memoryCache.set(key, entry);
-  console.log(`Cache stored: ${key}`);
+if (import.meta.env.DEV) console.log(`Cache stored: ${key}`);
 }
 
 /**
@@ -63,7 +63,7 @@ export function setToCache(key, data, checksum) {
 export function removeFromCache(key) {
   const deleted = memoryCache.delete(key);
   if (deleted) {
-    console.log(`Cache entry removed: ${key}`);
+  if (import.meta.env.DEV) console.log(`Cache entry removed: ${key}`);
   }
   return deleted;
 }
@@ -74,7 +74,7 @@ export function removeFromCache(key) {
 export function clearCache() {
   const size = memoryCache.size;
   memoryCache.clear();
-  console.log(`Cache cleared, removed ${size} entries`);
+if (import.meta.env.DEV) console.log(`Cache cleared, removed ${size} entries`);
 }
 
 /**

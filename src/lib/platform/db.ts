@@ -167,15 +167,14 @@ class ApiDatabaseService implements DatabaseService {
   
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}/api${endpoint}`;
-    const token = localStorage.getItem('auth_token');
     
     const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers,
       },
+      credentials: 'include' // 使用 cookie 认证
     });
     
     if (!response.ok) {
@@ -186,16 +185,24 @@ class ApiDatabaseService implements DatabaseService {
   }
   
   private async getCurrentUserId(): Promise<string> {
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
-      throw new Error('未找到认证令牌');
-    }
-    
+    // 通过 me() API 获取当前用户 ID，使用 cookie 认证
     try {
-      const tokenData = JSON.parse(atob(token));
-      return tokenData.user_id;
+      const response = await fetch('/api/auth/me', {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('未找到认证令牌');
+      }
+      
+      const result = await response.json();
+      if (result && result.user && result.user.id) {
+        return result.user.id;
+      }
+      
+      throw new Error('无效的用户数据');
     } catch (error) {
-      throw new Error('无效的认证令牌');
+      throw new Error('获取用户信息失败');
     }
   }
   

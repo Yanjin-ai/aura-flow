@@ -121,14 +121,13 @@ class ApiStorageService implements StorageService {
   
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.config.api_base_url}${endpoint}`;
-    const token = localStorage.getItem('auth_token');
     
     const response = await fetch(url, {
       ...options,
       headers: {
-        ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers
-      }
+      },
+      credentials: 'include' // 使用 cookie 认证
     });
     
     if (!response.ok) {

@@ -28,20 +28,13 @@ export const AuthProvider = ({ children }) => {
   const checkAuthStatus = async () => {
     try {
       setIsLoading(true);
-      // 简单检查 localStorage 中是否有 token
-      const token = localStorage.getItem('auth_token');
-      if (token) {
-        try {
-          const userData = await authService.me();
-          setUser(userData);
-          setIsAuthenticated(true);
-        } catch (error) {
-          console.error('获取用户信息失败:', error);
-          localStorage.removeItem('auth_token');
-          setUser(null);
-          setIsAuthenticated(false);
-        }
-      } else {
+      // 直接调用 me() API 检查认证状态，使用 cookie 认证
+      try {
+        const userData = await authService.me();
+        setUser(userData);
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('获取用户信息失败:', error);
         setUser(null);
         setIsAuthenticated(false);
       }
@@ -72,12 +65,9 @@ export const AuthProvider = ({ children }) => {
 
   // 用户注册
   const register = async (userData) => {
-    console.log('AuthContext: 开始注册', userData);
     try {
       setIsLoading(true);
-      console.log('AuthContext: 调用 authService.register');
       const response = await authService.register(userData);
-      console.log('AuthContext: 注册响应', response);
       setUser(response.user);
       setIsAuthenticated(true);
       return { success: true, user: response.user };

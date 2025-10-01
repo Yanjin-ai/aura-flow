@@ -36,8 +36,10 @@ const AdminPanel = () => {
       setLoading(true);
       const response = await fetch('/api/data-management/stats', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+          // 使用 cookie 认证
+        },
+        credentials: 'include',
+        credentials: 'include'
       });
       
       if (!response.ok) {
@@ -59,8 +61,9 @@ const AdminPanel = () => {
       setLoading(true);
       const response = await fetch('/api/data-management/export', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+          // 使用 cookie 认证
+        },
+        credentials: 'include'
       });
       
       if (!response.ok) {
@@ -98,7 +101,7 @@ const AdminPanel = () => {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          // 使用 cookie 认证
         },
         body: JSON.stringify({ confirmation: deleteConfirmation })
       });
@@ -109,7 +112,7 @@ const AdminPanel = () => {
       
       setSuccess('数据删除成功，即将退出登录');
       setTimeout(() => {
-        localStorage.removeItem('token');
+        // 使用 cookie 认证，无需手动清除 token
         window.location.href = '/login';
       }, 2000);
     } catch (err) {
@@ -125,8 +128,9 @@ const AdminPanel = () => {
       setLoading(true);
       const response = await fetch('/api/data-management/export-all', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+          // 使用 cookie 认证
+        },
+        credentials: 'include'
       });
       
       if (!response.ok) {
@@ -169,7 +173,7 @@ const AdminPanel = () => {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          // 使用 cookie 认证
         },
         body: JSON.stringify({ confirmation: deleteConfirmation })
       });

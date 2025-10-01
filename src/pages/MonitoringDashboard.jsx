@@ -49,8 +49,9 @@ const MonitoringDashboard = () => {
     try {
       const response = await fetch('/api/monitoring/overview', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+          // 使用 cookie 认证
+        },
+        credentials: 'include'
       });
       
       if (!response.ok) {
@@ -86,8 +87,9 @@ const MonitoringDashboard = () => {
     try {
       const response = await fetch('/api/monitoring/alerts', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+          // 使用 cookie 认证
+        },
+        credentials: 'include'
       });
       
       if (!response.ok) {
@@ -106,8 +108,9 @@ const MonitoringDashboard = () => {
     try {
       const response = await fetch('/api/monitoring/performance', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+          // 使用 cookie 认证
+        },
+        credentials: 'include'
       });
       
       if (!response.ok) {
@@ -198,8 +201,9 @@ const MonitoringDashboard = () => {
       const response = await fetch(`/api/monitoring/health-check/${checkName}`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+          // 使用 cookie 认证
+        },
+        credentials: 'include'
       });
       
       if (!response.ok) {
@@ -219,8 +223,9 @@ const MonitoringDashboard = () => {
       const response = await fetch('/api/monitoring/alerts', {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+          // 使用 cookie 认证
+        },
+        credentials: 'include'
       });
       
       if (!response.ok) {
