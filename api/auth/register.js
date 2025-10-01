@@ -1,110 +1,87 @@
-// 用户注册 API - 使用 Supabase 数据库
-import { createClient } from '@supabase/supabase-js'
-import bcrypt from 'bcryptjs'
-import { generateToken } from './jwt.js'
-
-// 优先使用服务端密钥，避免 RLS 401/500（仅服务端使用）
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
-
-const hasSupabaseConfig = !!(supabaseUrl && supabaseKey)
-
-// 创建 Supabase 客户端
-const supabase = hasSupabaseConfig ? createClient(supabaseUrl, supabaseKey) : null
+// 用户注册 API（Supabase Auth）
+import { createClient } from '../../src/lib/supabase-server.js'
 
 export default async function handler(req, res) {
-  // 设置 CORS 头
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    if (!hasSupabaseConfig) {
-      return res.status(500).json({ error: '服务器未正确配置数据库连接 (缺少 SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)' });
-    }
-    const { email, password, name } = req.body;
+    const { name, email, password } = req.body;
 
-    if (!email || !password || !name) {
-      return res.status(400).json({ error: '邮箱、密码和姓名都是必填项' });
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: '缺少必要字段' });
     }
 
-    // 检查用户是否已存在
-    const { data: existingUser, error: checkError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .single();
+    const supabase = createClient(req, res);
 
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 表示没有找到记录
-      return res.status(500).json({ error: '数据库查询失败' });
-    }
-
-    if (existingUser) {
-      return res.status(400).json({ error: '该邮箱已被注册' });
-    }
-
-    // 加密密码
-    const saltRounds = 10;
-    const password_hash = await bcrypt.hash(password, saltRounds);
-
-    // 创建新用户
-    const { data: newUser, error: insertError } = await supabase
-      .from('users')
-      .insert({
-        email: email,
-        name: name,
-        password_hash: password_hash,
-        language: 'zh-CN',
-        has_seen_welcome_guide: false,
-        auto_rollover_enabled: true,
-        auto_rollover_days: 7,
-        rollover_notification_enabled: true,
-        ai_daily_insights: true,
-        ai_weekly_insights: true,
-        ai_url_extraction: true
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      return res.status(500).json({ error: '注册失败，请稍后重试' });
-    }
-
-    // 生成 JWT token（签名）
-    const token = generateToken({
-      user_id: newUser.id,
-      email: newUser.email,
-      name: newUser.name
-    })
-
-    return res.status(201).json({
-      success: true,
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        name: newUser.name,
-        language: newUser.language,
-        has_seen_welcome_guide: newUser.has_seen_welcome_guide,
-        auto_rollover_enabled: newUser.auto_rollover_enabled,
-        auto_rollover_days: newUser.auto_rollover_days,
-        rollover_notification_enabled: newUser.rollover_notification_enabled,
-        ai_daily_insights: newUser.ai_daily_insights,
-        ai_weekly_insights: newUser.ai_weekly_insights,
-        ai_url_extraction: newUser.ai_url_extraction
-      },
-      token: token,
-      message: '注册成功'
+    // 使用 Supabase Auth 注册用户
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name,
+          has_seen_welcome_guide: false,
+          language: 'zh-CN',
+          auto_rollover_enabled: true,
+          auto_rollover_days: 7,
+          rollover_notification_enabled: true,
+          ai_daily_insights: true,
+          ai_weekly_insights: true,
+          ai_url_extraction: true
+        }
+      }
     });
 
+    if (error) {
+      console.error('注册错误:', error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    if (!data.user) {
+      return res.status(500).json({ error: '注册失败' });
+    }
+
+    // 转换用户信息格式
+    const userData = {
+      id: data.user.id,
+      email: data.user.email,
+      name,
+      has_seen_welcome_guide: false,
+      language: 'zh-CN',
+      auto_rollover_enabled: true,
+      auto_rollover_days: 7,
+      rollover_notification_enabled: true,
+      ai_daily_insights: true,
+      ai_weekly_insights: true,
+      ai_url_extraction: true,
+      created_at: data.user.created_at,
+      updated_at: data.user.updated_at
+    };
+
+    // 如果有 session，返回认证响应
+    if (data.session) {
+      return res.status(201).json({
+        success: true,
+        user: userData,
+        token: data.session.access_token
+      });
+    }
+
+    // 如果没有 session（需要邮箱验证），返回用户信息但不包含 token
+    return res.status(201).json({
+      success: true,
+      user: userData,
+      token: '',
+      message: '请检查邮箱并点击验证链接'
+    });
   } catch (error) {
-    res.status(500).json({ error: '服务器内部错误: ' + error.message });
+    console.error('注册错误:', error);
+    return res.status(500).json({ error: '注册失败' });
   }
 }

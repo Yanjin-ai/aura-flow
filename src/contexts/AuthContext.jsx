@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '@/lib/platform/auth';
+import { supabase } from '@/lib/supabase-browser';
 
 // 创建认证上下文
 const AuthContext = createContext();
@@ -22,6 +23,28 @@ export const AuthProvider = ({ children }) => {
   // 初始化时检查用户认证状态
   useEffect(() => {
     checkAuthStatus();
+    
+    // 监听 Supabase Auth 状态变化
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          try {
+            const userData = await authService.me();
+            setUser(userData);
+            setIsAuthenticated(true);
+          } catch (error) {
+            console.error('获取用户信息失败:', error);
+            setUser(null);
+            setIsAuthenticated(false);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   // 检查认证状态

@@ -11,8 +11,13 @@
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 
-# JWT 配置（可选，用于更安全的认证）
-JWT_SECRET=your-super-secret-jwt-key
+# Supabase Auth 配置（用于服务端 API）
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# JWT 配置（已弃用，现在使用 Supabase Auth）
+# JWT_SECRET=your-super-secret-jwt-key
 
 # AI 配置（可选）
 VITE_AI_PROVIDER=openai

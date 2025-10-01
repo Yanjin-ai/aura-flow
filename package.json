@@ -35,11 +35,6 @@
     "perf:install": "npm install -g k6"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0",
-    "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2",
-    "express-rate-limit": "^7.1.5",
-    "helmet": "^7.1.0",
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^4.1.2",
     "@radix-ui/react-accordion": "^1.2.3",
@@ -69,15 +64,21 @@
     "@radix-ui/react-toggle-group": "^1.1.2",
     "@radix-ui/react-tooltip": "^1.1.8",
     "@sentry/browser": "^10.12.0",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.39.0",
     "@tanstack/react-query": "^5.62.7",
     "axios": "^1.7.9",
+    "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.5.2",
+    "express-rate-limit": "^7.1.5",
     "framer-motion": "^12.4.7",
+    "helmet": "^7.1.0",
     "input-otp": "^1.4.2",
+    "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.475.0",
     "next-themes": "^0.4.4",
     "react": "^18.2.0",
@@ -96,6 +97,8 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@commitlint/cli": "^18.4.3",
+    "@commitlint/config-conventional": "^18.4.3",
     "@eslint/js": "^9.19.0",
     "@flydotio/dockerfile": "^0.7.8",
     "@playwright/test": "^1.48.2",
@@ -112,16 +115,14 @@
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.18",
     "globals": "^15.14.0",
+    "husky": "^8.0.3",
     "jsdom": "^26.0.0",
+    "lint-staged": "^15.2.0",
     "msw": "^2.6.5",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
     "vite": "^6.1.0",
-    "vitest": "^2.1.8",
-    "lint-staged": "^15.2.0",
-    "husky": "^8.0.3",
-    "@commitlint/cli": "^18.4.3",
-    "@commitlint/config-conventional": "^18.4.3"
+    "vitest": "^2.1.8"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
@@ -139,7 +140,9 @@
     ]
   },
   "commitlint": {
-    "extends": ["@commitlint/config-conventional"],
+    "extends": [
+      "@commitlint/config-conventional"
+    ],
     "rules": {
       "type-enum": [
         2,
@@ -158,11 +161,34 @@
           "revert"
         ]
       ],
-      "subject-case": [2, "never", ["sentence-case", "start-case", "pascal-case", "upper-case"]],
-      "subject-empty": [2, "never"],
-      "subject-full-stop": [2, "never", "."],
-      "type-case": [2, "always", "lower-case"],
-      "type-empty": [2, "never"]
+      "subject-case": [
+        2,
+        "never",
+        [
+          "sentence-case",
+          "start-case",
+          "pascal-case",
+          "upper-case"
+        ]
+      ],
+      "subject-empty": [
+        2,
+        "never"
+      ],
+      "subject-full-stop": [
+        2,
+        "never",
+        "."
+      ],
+      "type-case": [
+        2,
+        "always",
+        "lower-case"
+      ],
+      "type-empty": [
+        2,
+        "never"
+      ]
     }
   },
   "msw": {

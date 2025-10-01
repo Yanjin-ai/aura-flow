@@ -4,6 +4,7 @@
  */
 
 import { getAppConfig } from '../config';
+import { supabase } from '../supabase-browser';
 
 export interface User {
   id: string;
@@ -62,127 +63,193 @@ export interface AuthService {
 export function createAuthService(): AuthService {
   const config = getAppConfig();
   
-  // 统一使用 API 服务
-  return new ApiAuthService(config);
+  // 使用 Supabase Auth 服务
+  return new SupabaseAuthService(config);
 }
 
 
 /**
- * API 认证服务（生产环境使用）
+ * Supabase 认证服务
  */
-class ApiAuthService implements AuthService {
-  private baseUrl: string;
-  private debugMode: boolean;
-  
-  constructor(private config: any) {
-    this.baseUrl = config.apiBaseUrl || '';
-    this.debugMode = config.auth.debugMode || false;
-  }
-  
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    // 使用相对路径，指向 Vercel API 路由
-    // 暂时把 /auth/me 切到 /auth/me-v2 以规避旧函数缓存
-    const fixedEndpoint = endpoint === '/auth/me' ? '/auth/me-v2' : endpoint;
-    const url = `/api${fixedEndpoint}`;
-    
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-      },
-      credentials: 'include' // 使用 cookie 认证
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
-    }
-    
-    const result = await response.json();
-    
-    // 如果 API 返回的是包装格式 { success: true, data: ... }，则提取 data
-    if (result && typeof result === 'object' && 'success' in result && 'data' in result) {
-      return result.data;
-    }
-    
-    return result;
-  }
+class SupabaseAuthService implements AuthService {
+  constructor(private config: any) {}
   
   async me(): Promise<User> {
-    const result = await this.request<any>('/auth/me');
+    const { data: { user }, error } = await supabase.auth.getUser();
     
-    // API 返回 { success: true, user: ... }
-    if (result && typeof result === 'object' && 'success' in result && 'user' in result) {
-      return result.user;
+    if (error || !user) {
+      throw new Error('未找到用户信息');
     }
     
-    return result;
+    // 从 Supabase Auth 用户信息转换为应用用户格式
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.user_metadata?.name || user.user_metadata?.full_name,
+      has_seen_welcome_guide: user.user_metadata?.has_seen_welcome_guide || false,
+      language: user.user_metadata?.language || 'zh-CN',
+      auto_rollover_enabled: user.user_metadata?.auto_rollover_enabled ?? true,
+      auto_rollover_days: user.user_metadata?.auto_rollover_days || 7,
+      rollover_notification_enabled: user.user_metadata?.rollover_notification_enabled ?? true,
+      ai_daily_insights: user.user_metadata?.ai_daily_insights ?? true,
+      ai_weekly_insights: user.user_metadata?.ai_weekly_insights ?? true,
+      ai_url_extraction: user.user_metadata?.ai_url_extraction ?? true,
+      created_at: user.created_at,
+      updated_at: user.updated_at
+    };
   }
   
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const result = await this.request<any>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(credentials)
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: credentials.email,
+      password: credentials.password || ''
     });
     
-    // 认证 API 返回 { success: true, user: ..., token: ... }
-    const response = result && typeof result === 'object' && 'success' in result && 'user' in result
-      ? {
-          user: result.user,
-          token: result.token,
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      : result;
+    if (error) {
+      throw new Error(error.message);
+    }
     
-    // 使用 cookie 认证，无需手动保存 token
+    if (!data.user || !data.session) {
+      throw new Error('登录失败');
+    }
     
-    return response;
+    // 转换用户信息格式
+    const user: User = {
+      id: data.user.id,
+      email: data.user.email,
+      name: data.user.user_metadata?.name || data.user.user_metadata?.full_name,
+      has_seen_welcome_guide: data.user.user_metadata?.has_seen_welcome_guide || false,
+      language: data.user.user_metadata?.language || 'zh-CN',
+      auto_rollover_enabled: data.user.user_metadata?.auto_rollover_enabled ?? true,
+      auto_rollover_days: data.user.user_metadata?.auto_rollover_days || 7,
+      rollover_notification_enabled: data.user.user_metadata?.rollover_notification_enabled ?? true,
+      ai_daily_insights: data.user.user_metadata?.ai_daily_insights ?? true,
+      ai_weekly_insights: data.user.user_metadata?.ai_weekly_insights ?? true,
+      ai_url_extraction: data.user.user_metadata?.ai_url_extraction ?? true,
+      created_at: data.user.created_at,
+      updated_at: data.user.updated_at
+    };
+    
+    return {
+      user,
+      token: data.session.access_token,
+      expires_at: new Date(data.session.expires_at! * 1000).toISOString()
+    };
   }
   
   async register(userData: { name: string; email: string; password: string }): Promise<AuthResponse> {
-    const result = await this.request<any>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(userData)
+    const { data, error } = await supabase.auth.signUp({
+      email: userData.email,
+      password: userData.password,
+      options: {
+        data: {
+          name: userData.name,
+          has_seen_welcome_guide: false,
+          language: 'zh-CN',
+          auto_rollover_enabled: true,
+          auto_rollover_days: 7,
+          rollover_notification_enabled: true,
+          ai_daily_insights: true,
+          ai_weekly_insights: true,
+          ai_url_extraction: true
+        }
+      }
     });
     
-    // 认证 API 返回 { success: true, user: ..., token: ... }
-    const response = result && typeof result === 'object' && 'success' in result && 'user' in result
-      ? {
-          user: result.user,
-          token: result.token,
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      : result;
+    if (error) {
+      throw new Error(error.message);
+    }
     
-    // 使用 cookie 认证，无需手动保存 token
+    if (!data.user) {
+      throw new Error('注册失败');
+    }
     
-    return response;
+    // 转换用户信息格式
+    const user: User = {
+      id: data.user.id,
+      email: data.user.email,
+      name: userData.name,
+      has_seen_welcome_guide: false,
+      language: 'zh-CN',
+      auto_rollover_enabled: true,
+      auto_rollover_days: 7,
+      rollover_notification_enabled: true,
+      ai_daily_insights: true,
+      ai_weekly_insights: true,
+      ai_url_extraction: true,
+      created_at: data.user.created_at,
+      updated_at: data.user.updated_at
+    };
+    
+    // 如果有 session，返回认证响应
+    if (data.session) {
+      return {
+        user,
+        token: data.session.access_token,
+        expires_at: new Date(data.session.expires_at! * 1000).toISOString()
+      };
+    }
+    
+    // 如果没有 session（需要邮箱验证），返回用户信息但不包含 token
+    return {
+      user,
+      token: '',
+      expires_at: new Date().toISOString()
+    };
   }
   
   async updateUser(userData: Partial<User>): Promise<User> {
-    const result = await this.request<any>('/auth/update', {
-      method: 'PATCH',
-      body: JSON.stringify(userData)
+    const { data, error } = await supabase.auth.updateUser({
+      data: {
+        name: userData.name,
+        has_seen_welcome_guide: userData.has_seen_welcome_guide,
+        language: userData.language,
+        auto_rollover_enabled: userData.auto_rollover_enabled,
+        auto_rollover_days: userData.auto_rollover_days,
+        rollover_notification_enabled: userData.rollover_notification_enabled,
+        ai_daily_insights: userData.ai_daily_insights,
+        ai_weekly_insights: userData.ai_weekly_insights,
+        ai_url_extraction: userData.ai_url_extraction
+      }
     });
     
-    // API 返回 { success: true, user: ... }
-    if (result && typeof result === 'object' && 'success' in result && 'user' in result) {
-      return result.user;
+    if (error) {
+      throw new Error(error.message);
     }
     
-    return result;
+    if (!data.user) {
+      throw new Error('更新用户信息失败');
+    }
+    
+    // 转换用户信息格式
+    return {
+      id: data.user.id,
+      email: data.user.email,
+      name: data.user.user_metadata?.name || data.user.user_metadata?.full_name,
+      has_seen_welcome_guide: data.user.user_metadata?.has_seen_welcome_guide || false,
+      language: data.user.user_metadata?.language || 'zh-CN',
+      auto_rollover_enabled: data.user.user_metadata?.auto_rollover_enabled ?? true,
+      auto_rollover_days: data.user.user_metadata?.auto_rollover_days || 7,
+      rollover_notification_enabled: data.user.user_metadata?.rollover_notification_enabled ?? true,
+      ai_daily_insights: data.user.user_metadata?.ai_daily_insights ?? true,
+      ai_weekly_insights: data.user.user_metadata?.ai_weekly_insights ?? true,
+      ai_url_extraction: data.user.user_metadata?.ai_url_extraction ?? true,
+      created_at: data.user.created_at,
+      updated_at: data.user.updated_at
+    };
   }
   
   async logout(): Promise<void> {
-    // 使用 cookie 认证，无需手动清除 token
-    // 后端会清除 cookie
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      throw new Error(error.message);
+    }
   }
-  
   
   async isAuthenticated(): Promise<boolean> {
     try {
-      await this.me();
-      return true;
+      const { data: { user } } = await supabase.auth.getUser();
+      return !!user;
     } catch {
       return false;
     }
