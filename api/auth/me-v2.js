@@ -1,5 +1,8 @@
 // 用户信息 API（Supabase Auth 验证）
-import { createClient } from '../../src/lib/supabase-server.js'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
 
 export default async function handler(req, res) {
   // CORS
@@ -7,14 +10,37 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const supabase = createClient(req, res);
-    const { data: { user }, error } = await supabase.auth.getUser();
+    // 检查环境变量
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Supabase配置缺失:', { supabaseUrl: !!supabaseUrl, supabaseKey: !!supabaseKey });
+      return res.status(500).json({ error: '服务器配置错误' });
+    }
+
+    // 创建Supabase客户端
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: false
+      }
+    });
+
+    // 从请求头获取Authorization token
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: '未提供认证令牌' });
+    }
+
+    const token = authHeader.substring(7);
+    
+    // 使用token获取用户信息
+    const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
+      console.error('获取用户信息失败:', error);
       return res.status(401).json({ error: '未找到用户信息' });
     }
 
@@ -37,6 +63,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ success: true, user: userData, source: 'me-supabase-auth' });
   } catch (error) {
+    console.error('API错误:', error);
     return res.status(401).json({ error: error.message || '认证失败' });
   }
 }
