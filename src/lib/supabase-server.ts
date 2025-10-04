@@ -5,7 +5,12 @@
 
 import { createServerClient } from '@supabase/ssr'
 
-export function createClient(req: Request, res: Response) {
+// Vercel Serverless Functions 的 Response 类型
+interface VercelResponse {
+  setHeader: (name: string, value: string) => void;
+}
+
+export function createClient(req: Request, res: VercelResponse) {
   return createServerClient(
     process.env.VITE_SUPABASE_URL!,
     process.env.VITE_SUPABASE_ANON_KEY!,

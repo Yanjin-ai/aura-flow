@@ -38,7 +38,6 @@ const AdminPanel = () => {
         headers: {
           // 使用 cookie 认证
         },
-        credentials: 'include',
         credentials: 'include'
       });
       

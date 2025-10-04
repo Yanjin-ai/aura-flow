@@ -4,6 +4,7 @@
  */
 
 import { getAppConfig } from '../config';
+import { supabase } from '../supabase-browser';
 
 // 任务相关类型
 export interface Task {
@@ -185,21 +186,30 @@ class ApiDatabaseService implements DatabaseService {
   }
   
   private async getCurrentUserId(): Promise<string> {
-    // 通过 me() API 获取当前用户 ID，使用 cookie 认证
+    // 使用 Supabase 会话 + Bearer Token 访问新的 me-v2 接口
+    // 说明：之前调用的是 /api/auth/me（JWT），已改为 /api/auth/me-v2（Supabase Auth）
     try {
-      const response = await fetch('/api/auth/me', {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('未找到用户会话');
+      }
+
+      const response = await fetch('/api/auth/me-v2', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
         credentials: 'include'
       });
-      
+
       if (!response.ok) {
-        throw new Error('未找到认证令牌');
+        throw new Error('获取用户信息失败');
       }
-      
+
       const result = await response.json();
-      if (result && result.user && result.user.id) {
-        return result.user.id;
-      }
-      
+      if (result?.user?.id) return result.user.id;
+
       throw new Error('无效的用户数据');
     } catch (error) {
       throw new Error('获取用户信息失败');
