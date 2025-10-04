@@ -9,6 +9,17 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// 调试：检查环境变量
+console.log('Supabase.js 环境变量检查:', {
+  url: supabaseUrl ? '存在' : '缺失',
+  key: supabaseAnonKey ? '存在' : '缺失'
+});
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('❌ Supabase.js 环境变量缺失！');
+  throw new Error('Supabase 环境变量未正确配置');
+}
+
 // 创建 Supabase 客户端
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
