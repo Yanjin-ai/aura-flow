@@ -1,5 +1,15 @@
 // 任务 API（Supabase Auth）
-import { createClient } from '../src/lib/supabase-server.js'
+import { createClient } from '@supabase/supabase-js'
+
+// 在 Vercel 中，环境变量可能需要不同的引用方式
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
+
+// 调试日志
+console.log('API tasks 环境变量检查:', {
+  url: supabaseUrl ? '存在' : '缺失',
+  key: supabaseKey ? '存在' : '缺失'
+});
 
 export default async function handler(req, res) {
   // CORS
@@ -10,7 +20,18 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const supabase = createClient(req, res);
+    // 检查环境变量
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Supabase配置缺失:', { supabaseUrl: !!supabaseUrl, supabaseKey: !!supabaseKey });
+      return res.status(500).json({ error: '服务器配置错误' });
+    }
+
+    // 创建Supabase客户端
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: false
+      }
+    });
     
     // 验证用户身份
     const { data: { user }, error: authError } = await supabase.auth.getUser();
