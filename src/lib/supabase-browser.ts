@@ -17,6 +17,9 @@ console.log('- Key 长度:', supabaseAnonKey ? supabaseAnonKey.length : 0);
 console.log('- 所有环境变量:', Object.keys(import.meta.env).filter(key => key.startsWith('VITE_')));
 
 // 如果环境变量缺失，使用硬编码值作为临时解决方案
+let finalUrl: string;
+let finalKey: string;
+
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('❌ Supabase 环境变量缺失！使用硬编码值作为临时解决方案');
   console.error('VITE_SUPABASE_URL:', supabaseUrl);
@@ -29,20 +32,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('⚠️ 使用硬编码值:', { url: fallbackUrl, key: `${fallbackKey.substring(0, 20)}...` });
   
   // 使用硬编码值
-  const finalUrl = supabaseUrl || fallbackUrl;
-  const finalKey = supabaseAnonKey || fallbackKey;
-  
-  export function createClient() {
-    return createBrowserClient(finalUrl, finalKey)
-  }
-  
-  // 导出默认客户端实例
-  export const supabase = createClient()
+  finalUrl = supabaseUrl || fallbackUrl;
+  finalKey = supabaseAnonKey || fallbackKey;
 } else {
-  export function createClient() {
-    return createBrowserClient(supabaseUrl, supabaseAnonKey)
-  }
-  
-  // 导出默认客户端实例
-  export const supabase = createClient()
+  finalUrl = supabaseUrl;
+  finalKey = supabaseAnonKey;
 }
+
+export function createClient() {
+  return createBrowserClient(finalUrl, finalKey)
+}
+
+// 导出默认客户端实例
+export const supabase = createClient()
