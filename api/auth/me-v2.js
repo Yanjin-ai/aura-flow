@@ -1,8 +1,17 @@
 // 用户信息 API（Supabase Auth 验证）
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
+// 在 Vercel 中，环境变量可能需要不同的引用方式
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
+
+// 调试日志
+console.log('API me-v2 环境变量检查:', {
+  url: supabaseUrl ? '存在' : '缺失',
+  key: supabaseKey ? '存在' : '缺失',
+  urlValue: supabaseUrl,
+  keyValue: supabaseKey ? `${supabaseKey.substring(0, 20)}...` : 'undefined'
+});
 
 export default async function handler(req, res) {
   // CORS
