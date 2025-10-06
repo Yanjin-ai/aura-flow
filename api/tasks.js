@@ -33,8 +33,20 @@ export default async function handler(req, res) {
       }
     });
     
-    // 验证用户身份
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // 验证用户身份（优先 Bearer Token，其次 Cookie）
+    let user = null;
+    let authError = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const bearer = authHeader.substring(7);
+      const r = await supabase.auth.getUser(bearer);
+      user = r.data?.user;
+      authError = r.error || null;
+    } else {
+      const r = await supabase.auth.getUser();
+      user = r.data?.user;
+      authError = r.error || null;
+    }
     
     if (authError || !user) {
       return res.status(401).json({ error: '未授权访问' });

@@ -168,14 +168,27 @@ class ApiDatabaseService implements DatabaseService {
   
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}/api${endpoint}`;
-    
+
+    // 为所有 API 请求自动附加 Supabase Bearer Token（若存在）
+    let authHeaders: Record<string, string> = {};
+    try {
+      const { supabase } = await import('../supabase-browser');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        authHeaders.Authorization = `Bearer ${session.access_token}`;
+      }
+    } catch (_) {
+      // 忽略前端获取 token 的失败，后端可回退 Cookie 认证
+    }
+
     const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        ...options.headers,
+        ...authHeaders,
+        ...(options.headers as Record<string, string>),
       },
-      credentials: 'include' // 使用 cookie 认证
+      credentials: 'include'
     });
     
     if (!response.ok) {
