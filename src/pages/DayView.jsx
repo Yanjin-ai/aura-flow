@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Task } from "@/api/entities";
 import { User } from "@/api/entities";
+import { directDb } from "../lib/platform/db-direct";
 import { format } from "date-fns";
 import SmartTaskInput from "../components/SmartTaskInput";
 import TaskList from "../components/TaskList";
@@ -63,7 +64,8 @@ export default function DayView() {
     const loadTasks = async () => {
       try {
         const dateStr = format(currentDate, 'yyyy-MM-dd');
-        const fetchedTasks = await Task.filter({ date: dateStr }, '-order_index');
+        // 使用直接数据库服务，绕过 API 函数
+        const fetchedTasks = await directDb.getTasks(undefined, dateStr);
         setTasks(fetchedTasks);
       } catch (error) {
         console.error("Failed to load tasks:", error);
@@ -106,7 +108,8 @@ export default function DayView() {
         ...taskData
       };
       
-      const newTask = await Task.create(newTaskData);
+      // 使用直接数据库服务，绕过 API 函数
+      const newTask = await directDb.createTask(newTaskData);
 
       // AI自动分类队列处理（如果还没有分类的话）
       if (AI_ENABLED && AI_CLASSIFY_ENABLED && newTask?.id && !taskData.category) {
@@ -126,7 +129,8 @@ export default function DayView() {
   };
 
   const toggleComplete = async (task) => {
-    const updatedTask = await Task.update(task.id, {
+    // 使用直接数据库服务，绕过 API 函数
+    const updatedTask = await directDb.updateTask(task.id, {
       completed: !task.completed,
       completed_at: !task.completed ? new Date().toISOString() : null
     });
@@ -148,14 +152,14 @@ export default function DayView() {
 
     // 更新数据库中的order_index
     for (let i = 0; i < reorderedTasks.length; i++) {
-      await Task.update(reorderedTasks[i].id, {
+      await directDb.updateTask(reorderedTasks[i].id, {
         order_index: reorderedTasks.length - i
       });
     }
   };
   
   const handleUpdateTask = async (taskId, data) => {
-    await Task.update(taskId, data);
+    await directDb.updateTask(taskId, data);
     // 刷新UI
     setTasks(prevTasks => prevTasks.map(task => 
       task.id === taskId ? { ...task, ...data } : task
@@ -166,7 +170,7 @@ export default function DayView() {
     // 当任务被延期后，刷新当前任务列表
     const reloadTasks = async () => {
       const dateStr = format(currentDate, 'yyyy-MM-dd');
-      const fetchedTasks = await Task.filter({ date: dateStr }, '-order_index');
+      const fetchedTasks = await directDb.getTasks(undefined, dateStr);
       setTasks(fetchedTasks);
     };
     reloadTasks();

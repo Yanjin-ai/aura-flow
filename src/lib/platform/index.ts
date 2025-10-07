@@ -11,6 +11,7 @@ export * from './storage';
 
 // 数据库相关接口
 export * from './db';
+export * from './db-direct';
 
 // AI 服务相关接口
 export * from './ai';
