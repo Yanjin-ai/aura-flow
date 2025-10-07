@@ -3,7 +3,7 @@
  * 这是为了解决 API 函数环境变量问题的临时方案
  */
 
-import { supabase } from '../supabase-browser'
+import { supabase } from '../supabase-simple'
 
 export class DirectDatabaseService {
   private async getCurrentUserId(): Promise<string> {

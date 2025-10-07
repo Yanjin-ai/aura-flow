@@ -27,7 +27,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   
   // 临时硬编码值（仅用于调试）
   const fallbackUrl = 'https://lpelllegamiqdwtgqmsy.supabase.co';
-  const fallbackKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwZWxsbGVnYW1pcWR3dGdxbXN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MDE4MDgsImV4cCI6MjA3NDM3NzgwOH0.IGt6WyLt4WPXQ7lN4ofCb389yTKUXY4kEDmWK7Sx4as';
+  const fallbackKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwZWxsbGVnYW1pcWR3dGdxbXN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1MDE5MzksImV4cCI6MjA3NTA3NzkzOX0.bL1GnkZ_OLwdbr_RzKZg4bV8UKrm084QFTXxOWl0MzUM';
   
   console.warn('⚠️ 使用硬编码值:', { url: fallbackUrl, key: `${fallbackKey.substring(0, 20)}...` });
   

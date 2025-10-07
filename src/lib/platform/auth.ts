@@ -4,7 +4,7 @@
  */
 
 import { getAppConfig } from '../config';
-import { supabase } from '../supabase-browser';
+import { supabase } from '../supabase-simple';
 
 export interface User {
   id: string;

@@ -20,8 +20,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase 环境变量未正确配置');
 }
 
+// 如果环境变量缺失，使用硬编码值
+const finalUrl = supabaseUrl || 'https://lpelllegamiqdwtgqmsy.supabase.co';
+const finalKey = supabaseAnonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwZWxsbGVnYW1pcWR3dGdxbXN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1MDE5MzksImV4cCI6MjA3NTA3NzkzOX0.bL1GnkZ_OLwdbr_RzKZg4bV8UKrm084QFTXxOWl0MzUM';
+
 // 创建 Supabase 客户端
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(finalUrl, finalKey);
 
 // 导出数据库操作函数
 export const db = {

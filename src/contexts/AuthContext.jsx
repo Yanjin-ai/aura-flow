@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '@/lib/platform/auth';
-import { supabase } from '@/lib/supabase-browser';
+import { supabase } from '@/lib/supabase-simple';
 
 // 创建认证上下文
 const AuthContext = createContext();
